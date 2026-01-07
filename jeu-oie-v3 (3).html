@@ -1,0 +1,1041 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>🎲 Jeu de l'Oie GameCrush</title>
+    <link href="https://fonts.googleapis.com/css2?family=Bangers&family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        :root { --neon-pink: #FF00FF; --neon-cyan: #00FFFF; --neon-green: #39FF14; }
+        body { font-family: 'Poppins', sans-serif; background: linear-gradient(135deg, #0D0015 0%, #1A0033 50%, #2D0A4E 100%); min-height: 100vh; padding: 10px; color: #e0e0e0; overflow-x: hidden; }
+        .stars { position: fixed; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 0; }
+        .star { position: absolute; width: 2px; height: 2px; background: #FF00FF; border-radius: 50%; animation: twinkle 3s infinite; }
+        @keyframes twinkle { 0%, 100% { opacity: 0.3; } 50% { opacity: 1; } }
+        .container { max-width: 1100px; margin: 0 auto; position: relative; z-index: 1; }
+        h1 { text-align: center; font-family: 'Bangers', cursive; font-size: clamp(2em, 6vw, 3.5em); margin-bottom: 5px; color: var(--neon-pink); text-shadow: 0 0 20px var(--neon-pink); }
+        .subtitle { text-align: center; font-size: 1em; margin-bottom: 15px; color: var(--neon-cyan); }
+        .progress-tracker { background: rgba(255,0,255,0.1); border: 2px solid var(--neon-pink); border-radius: 20px; padding: 15px; margin-bottom: 15px; }
+        .progress-bar { background: rgba(0,0,0,0.5); border-radius: 20px; height: 30px; overflow: hidden; margin: 10px 0; border: 1px solid var(--neon-cyan); }
+        .progress-fill { background: linear-gradient(90deg, var(--neon-pink), var(--neon-cyan)); height: 100%; transition: width 0.5s; display: flex; align-items: center; justify-content: center; color: white; font-weight: 600; }
+        .progress-text, .answers-count { text-align: center; color: var(--neon-cyan); font-size: 0.9em; }
+        .answers-count { color: var(--neon-green); margin-top: 5px; }
+        .controls { display: flex; gap: 10px; margin-bottom: 15px; flex-wrap: wrap; }
+        .control-btn { flex: 1; min-width: 100px; padding: 12px 20px; border: 2px solid var(--neon-pink); border-radius: 15px; background: rgba(255,0,255,0.1); color: var(--neon-pink); cursor: pointer; font-weight: 600; transition: all 0.3s; }
+        .control-btn:hover { background: rgba(255,0,255,0.3); }
+        .control-btn.highlight { background: linear-gradient(135deg, var(--neon-pink), #9D00FF); color: white; animation: pulse-btn 2s infinite; }
+        @keyframes pulse-btn { 0%, 100% { box-shadow: 0 0 15px rgba(255,0,255,0.5); } 50% { box-shadow: 0 0 30px rgba(255,0,255,0.8); } }
+        .dice-section { background: rgba(0,255,255,0.05); border: 2px solid var(--neon-cyan); border-radius: 20px; padding: 20px; margin-bottom: 15px; text-align: center; }
+        .dice { font-size: 4em; margin: 10px 0; min-height: 80px; display: flex; align-items: center; justify-content: center; }
+        .roll-button { width: 100%; max-width: 300px; padding: 15px 30px; font-size: 1.3em; font-family: 'Bangers', cursive; border: none; border-radius: 20px; background: linear-gradient(135deg, var(--neon-pink), #9D00FF); color: white; cursor: pointer; transition: all 0.3s; box-shadow: 0 0 30px rgba(255,0,255,0.5); }
+        .roll-button:hover { transform: scale(1.05); }
+        .roll-button:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+        .board { display: grid; grid-template-columns: repeat(auto-fill, minmax(90px, 1fr)); gap: 8px; margin-bottom: 20px; }
+        .cell { aspect-ratio: 1; background: rgba(255,255,255,0.03); border: 2px solid rgba(255,0,255,0.2); border-radius: 15px; display: flex; flex-direction: column; align-items: center; justify-content: center; cursor: pointer; transition: all 0.3s; padding: 5px; position: relative; }
+        .cell.visited { background: rgba(255,0,255,0.15); border-color: var(--neon-pink); box-shadow: 0 0 15px rgba(255,0,255,0.4); }
+        .cell.answered { border-color: var(--neon-green); }
+        .cell.answered::after { content: '✓'; position: absolute; top: 3px; right: 5px; font-size: 0.6em; color: var(--neon-green); }
+        .cell.current { background: linear-gradient(135deg, rgba(255,0,255,0.4), rgba(0,255,255,0.4)); border-color: var(--neon-cyan); animation: pulse 2s infinite; }
+        @keyframes pulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.05); } }
+        .cell-number { font-size: 0.6em; color: var(--neon-cyan); }
+        .cell-icon { font-size: 1.4em; }
+        .cell-title { font-size: 0.5em; text-align: center; color: #fff; line-height: 1.1; }
+        .popup-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); z-index: 1000; align-items: center; justify-content: center; padding: 15px; }
+        .popup { background: linear-gradient(135deg, #0D0015, #1A0033); border: 3px solid var(--neon-pink); border-radius: 25px; max-width: 600px; width: 100%; max-height: 90vh; overflow-y: auto; padding: 20px; }
+        .popup-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 15px; }
+        .popup-title { font-family: 'Bangers', cursive; font-size: 1.4em; color: var(--neon-pink); text-shadow: 0 0 10px var(--neon-pink); }
+        .popup-type { display: inline-block; padding: 4px 10px; border-radius: 15px; font-size: 0.75em; font-weight: 600; margin-top: 5px; }
+        .type-fondement { background: rgba(255,0,255,0.2); border: 1px solid var(--neon-pink); color: var(--neon-pink); }
+        .type-dependance { background: rgba(255,100,100,0.2); border: 1px solid #FF6464; color: #FF6464; }
+        .type-digital { background: rgba(0,255,255,0.2); border: 1px solid var(--neon-cyan); color: var(--neon-cyan); }
+        .type-relation { background: rgba(57,255,20,0.2); border: 1px solid var(--neon-green); color: var(--neon-green); }
+        .type-devperso { background: rgba(255,215,0,0.2); border: 1px solid gold; color: gold; }
+        .type-culture { background: rgba(255,105,180,0.2); border: 1px solid hotpink; color: hotpink; }
+        .type-end { background: linear-gradient(135deg, rgba(255,0,255,0.3), rgba(0,255,255,0.3)); color: white; }
+        .close-btn { background: none; border: 2px solid var(--neon-pink); font-size: 1.3em; color: var(--neon-pink); cursor: pointer; width: 36px; height: 36px; border-radius: 50%; }
+        .popup-desc { font-size: 0.95em; line-height: 1.6; color: #f0f0f0; margin-bottom: 15px; }
+        .fun-fact { background: rgba(0,255,255,0.1); border-left: 4px solid var(--neon-cyan); border-radius: 10px; padding: 12px; margin: 15px 0; }
+        .fun-fact-title { font-weight: 700; color: var(--neon-cyan); margin-bottom: 5px; }
+        .question-section { background: rgba(255,0,255,0.1); border: 2px solid var(--neon-pink); border-radius: 15px; padding: 15px; margin: 15px 0; }
+        .question-title { font-family: 'Bangers', cursive; font-size: 1.1em; color: var(--neon-pink); margin-bottom: 8px; }
+        .question-options { display: flex; flex-direction: column; gap: 8px; }
+        .question-option { background: rgba(255,255,255,0.05); border: 2px solid rgba(255,0,255,0.3); border-radius: 10px; padding: 10px 12px; cursor: pointer; transition: all 0.3s; color: #fff; font-size: 0.9em; }
+        .question-option:hover { background: rgba(255,0,255,0.2); border-color: var(--neon-pink); }
+        .question-option.selected { background: rgba(57,255,20,0.2); border-color: var(--neon-green); }
+        .question-option.selected::before { content: '✓ '; color: var(--neon-green); }
+        .gage-section { background: rgba(57,255,20,0.1); border: 2px solid var(--neon-green); border-radius: 15px; padding: 15px; margin: 15px 0; }
+        .gage-title { font-family: 'Bangers', cursive; font-size: 1.1em; color: var(--neon-green); margin-bottom: 8px; }
+        .gage-text { line-height: 1.5; color: #f0f0f0; font-style: italic; font-size: 0.9em; }
+        .gage-reason { margin-top: 8px; padding-top: 8px; border-top: 1px solid rgba(57,255,20,0.3); font-size: 0.8em; color: var(--neon-green); opacity: 0.8; }
+        .results-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: linear-gradient(135deg, #0D0015, #1A0033, #2D0A4E); z-index: 2000; overflow-y: auto; padding: 20px; }
+        .results-container { max-width: 700px; margin: 0 auto; }
+        .results-title { font-family: 'Bangers', cursive; font-size: 2.2em; color: var(--neon-pink); text-shadow: 0 0 20px var(--neon-pink); text-align: center; margin-bottom: 5px; }
+        .results-subtitle { color: var(--neon-cyan); text-align: center; margin-bottom: 25px; }
+        .profile-card { background: rgba(255,0,255,0.1); border: 2px solid var(--neon-pink); border-radius: 20px; padding: 20px; margin-bottom: 20px; }
+        .profile-section-title { font-family: 'Bangers', cursive; font-size: 1.2em; color: var(--neon-cyan); margin-bottom: 12px; }
+        .trait-bar { margin-bottom: 15px; }
+        .trait-label { display: flex; justify-content: space-between; margin-bottom: 5px; color: #fff; font-size: 0.9em; }
+        .trait-value { color: var(--neon-green); }
+        .trait-progress { background: rgba(0,0,0,0.5); border-radius: 10px; height: 18px; overflow: hidden; }
+        .trait-fill { height: 100%; border-radius: 10px; transition: width 1s; }
+        .trait-fill.pink { background: linear-gradient(90deg, var(--neon-pink), #FF6B9D); }
+        .trait-fill.cyan { background: linear-gradient(90deg, var(--neon-cyan), #00BFFF); }
+        .trait-fill.green { background: linear-gradient(90deg, var(--neon-green), #7FFF00); }
+        .trait-fill.gold { background: linear-gradient(90deg, gold, #FFD700); }
+        .trait-fill.purple { background: linear-gradient(90deg, #9D00FF, #BA55D3); }
+        .advice-card { background: rgba(0,255,255,0.1); border: 2px solid var(--neon-cyan); border-radius: 12px; padding: 15px; margin-bottom: 12px; }
+        .advice-title { font-weight: 700; color: var(--neon-cyan); margin-bottom: 8px; }
+        .advice-text { line-height: 1.5; color: #f0f0f0; font-size: 0.9em; }
+        .advice-case { margin-top: 8px; font-size: 0.8em; color: var(--neon-pink); }
+        .results-actions { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 25px; }
+        .results-btn { flex: 1; min-width: 150px; padding: 12px 20px; border: 2px solid var(--neon-pink); border-radius: 15px; background: rgba(255,0,255,0.1); color: var(--neon-pink); font-family: 'Bangers', cursive; font-size: 1em; cursor: pointer; }
+        .results-btn:hover { background: rgba(255,0,255,0.3); }
+        .results-btn.primary { background: linear-gradient(135deg, var(--neon-pink), #9D00FF); color: white; border: none; }
+        .compatibility-section { background: rgba(57,255,20,0.1); border: 2px solid var(--neon-green); border-radius: 20px; padding: 20px; margin-top: 20px; text-align: center; }
+        .compatibility-title { font-family: 'Bangers', cursive; font-size: 1.3em; color: var(--neon-green); margin-bottom: 10px; }
+    </style>
+</head>
+<body>
+    <div class="stars" id="stars"></div>
+    <div class="container">
+        <h1>🎲 JEU DE L'OIE</h1>
+        <div class="subtitle">🦢 Découvre ton Profil Amoureux en 63 cases</div>
+        <div class="progress-tracker">
+            <div class="progress-text" id="progressText">0/63 cases</div>
+            <div class="progress-bar"><div class="progress-fill" id="progressFill" style="width: 0%">0%</div></div>
+            <div class="answers-count" id="answersCount">🎯 0 réponses</div>
+        </div>
+        <div class="controls">
+            <button class="control-btn" onclick="toggleSound()" id="soundToggle">🔊</button>
+            <button class="control-btn" onclick="resetGame()">🔄 Reset</button>
+            <button class="control-btn" onclick="showResults()" id="resultsBtn">📊 Profil</button>
+        </div>
+        <div class="dice-section">
+            <div class="dice" id="dice">🎲</div>
+            <button class="roll-button" id="rollButton" onclick="rollDice()">🎲 LANCE LE DÉ !</button>
+        </div>
+        <div class="board" id="board"></div>
+    </div>
+    <div class="popup-overlay" id="popup"><div class="popup" id="popupContent"></div></div>
+    <div class="results-overlay" id="resultsOverlay"><div class="results-container" id="resultsContent"></div></div>
+    <script>
+        let currentPosition = 0, visitedCells = new Set([...Array(64).keys()]), soundEnabled = true, userAnswers = {};
+        let userProfile = {
+            attachement: { secure: 0, anxieux: 0, evitant: 0, desorganise: 0 },
+            dependance: 50, langage: { mots: 0, temps: 0, cadeaux: 0, services: 0, toucher: 0 },
+            passionStabilite: 50, redFlags: 50, estime: 50, communication: 50, digital: 50
+        };
+
+        const cells = [
+            { num: 0, icon: '🚀', title: 'DÉPART', type: 'fondement', 
+              desc: 'Bienvenue dans le Voyage de l\'Amour ! 63 cases pour comprendre pourquoi t\'es célibataire, pourquoi t\'es en couple toxique, ou pourquoi t\'es en couple sain (dans ce cas, qu\'est-ce que tu fous là ?). Spoiler : tu vas te reconnaître. Souvent. Trop souvent.', 
+              funFact: 'Le jeu de l\'oie date du XVIe siècle. Mais l\'amour compliqué, ça date de bien avant.',
+              question: 'Tu te lances parce que :', options: [
+                { text: 'Je veux comprendre mes relations', score: { estime: +5 } },
+                { text: 'Je m\'ennuie et j\'ai du Wi-Fi', score: { } },
+                { text: 'Un pote m\'a dit que c\'était marrant', score: { } },
+                { text: 'Je fuis mes responsabilités', score: { evitant: +3 } }
+              ],
+              gage: 'Mets "I Will Survive" de Gloria Gaynor. Fort. Chante.', gageReason: 'Gloria a survécu à pire que toi.' },
+
+            { num: 1, icon: '❤️', title: 'C\'est quoi l\'amour ?', type: 'fondement', 
+              desc: 'Spoiler : personne sait vraiment. La science dit que c\'est un cocktail de dopamine, ocytocine et sérotonine qui te transforme en zombie baveux devant ton téléphone. T\'es drogué. Légalement.', 
+              funFact: 'L\'amour active les mêmes zones du cerveau que la cocaïne.',
+              question: 'L\'amour pour toi c\'est :', options: [
+                { text: 'Papillons dans le ventre 🦋', score: { passionStabilite: +10 } },
+                { text: 'Confiance et Netflix ensemble 🏠', score: { passionStabilite: -10, secure: +5 } },
+                { text: 'Passion dévorante 🔥', score: { passionStabilite: +15, anxieux: +3 } },
+                { text: 'Un concept inventé par Hallmark', score: { estime: -5 } }
+              ],
+              gage: 'Écoute "What Is Love" de Haddaway. Hoche la tête comme dans "A Night at the Roxbury".', gageReason: 'LA question existentielle depuis 1993.' },
+
+            { num: 2, icon: '🧠', title: 'Cerveau amoureux', type: 'fondement', 
+              desc: 'Quand tu tombes amoureux, ton cerveau devient une usine à hormones défectueuse. Tu penses à cette personne 247 fois par jour. Oui, on a compté.', 
+              funFact: 'Ton taux de sérotonine amoureux = celui d\'une personne avec des TOC. Ça explique les 47 checks de son profil par heure.',
+              question: 'Quand t\'es amoureux/se :', options: [
+                { text: 'Stalker de son profil Insta', score: { anxieux: +10, dependance: +10 } },
+                { text: 'Euphorique, tout est beau', score: { passionStabilite: +5 } },
+                { text: 'Parano - pourquoi ce like ?!', score: { anxieux: +15, estime: -5 } },
+                { text: 'Normal(e) - ça existe ?', score: { secure: +10 } }
+              ],
+              gage: 'Récite 3 éléments du tableau périodique. L\'amour c\'est de la chimie.', gageReason: 'Dopamine, ocytocine, sérotonine. Cours de chimie gratuit.' },
+
+            { num: 3, icon: '💕', title: 'Les 3 phases', type: 'fondement', 
+              desc: 'Phase 1 : DÉSIR. Phase 2 : ATTIRANCE (tu dors plus). Phase 3 : ATTACHEMENT (Netflix et plantes vertes). Le piège ? Emménager ensemble après 3 semaines de phase 1.', 
+              funFact: 'La phase d\'attirance dure entre 6 mois et 2 ans max.',
+              question: 'Ta plus longue relation :', options: [
+                { text: 'Moins de 6 mois', score: { passionStabilite: +10, evitant: +5 } },
+                { text: '6 mois à 2 ans', score: { } },
+                { text: 'Plus de 2 ans (bravo)', score: { secure: +10 } },
+                { text: 'J\'attends de commencer', score: { } }
+              ],
+              gage: 'Regarde la scène du resto dans "Quand Harry rencontre Sally". Tu sais laquelle.', gageReason: 'Meg Ryan a traumatisé/éduqué une génération.' },
+
+            { num: 4, icon: '🗣️', title: 'Les 5 langages', type: 'fondement', 
+              desc: '5 façons d\'exprimer l\'amour : Paroles, Temps, Cadeaux, Services, Toucher. Tu donnes dans TON langage, pas celui de l\'autre. C\'est comme parler français à quelqu\'un qui parle japonais.', 
+              funFact: 'La plupart des disputes viennent d\'un décalage de langages.',
+              question: 'Ton langage principal :', options: [
+                { text: 'Les mots doux 💬', score: { mots: +20 } },
+                { text: 'Le temps ensemble ⏰', score: { temps: +20 } },
+                { text: 'Les cadeaux 🎁', score: { cadeaux: +20 } },
+                { text: 'Le contact physique 🤗', score: { toucher: +20 } }
+              ],
+              gage: 'Appelle quelqu\'un et dis-lui un truc gentil. Au téléphone. Avec ta vraie voix.', gageReason: 'Si ça te fait peur, t\'as trouvé ton axe de progression.' },
+
+            { num: 5, icon: '🤗', title: 'L\'ocytocine', type: 'fondement', 
+              desc: 'L\'hormone du câlin. Elle se libère quand tu câlines, quand tu fais l\'amour, quand tu regardes quelqu\'un dans les yeux 4 secondes (essaie, c\'est gênant).', 
+              funFact: '20 secondes de câlin = libération d\'ocytocine. Moins = arnaque neurologique.',
+              question: 'T\'es plutôt :', options: [
+                { text: 'Câlins tout le temps 🐨', score: { toucher: +15, dependance: +5 } },
+                { text: 'Câlins en privé seulement', score: { toucher: +10 } },
+                { text: 'Touche-moi pas 🦔', score: { evitant: +10 } },
+                { text: 'Ça dépend de mon mood', score: { desorganise: +5 } }
+              ],
+              gage: 'Fais un câlin de 20 secondes à quelqu\'un. En comptant dans ta tête.', gageReason: '20 sec = minimum syndical pour l\'ocytocine.' },
+
+            { num: 6, icon: '🎭', title: 'Styles d\'attachement', type: 'fondement', 
+              desc: 'SÉCURE (cool), ANXIEUX (tu m\'aimes ?), ÉVITANT (pas trop près), DÉSORGANISÉ (reviens / va-t-en). La bonne nouvelle ? Ça se travaille.', 
+              funFact: '50% sécures, 25% anxieux, 20% évitants, 5% désorganisés. Les anxieux attirent les évitants. Danse cosmique.',
+              question: 'Tu te reconnais où :', options: [
+                { text: 'Sécure (t\'as eu de la chance)', score: { secure: +20 } },
+                { text: 'Anxieux (bienvenue au club)', score: { anxieux: +20 } },
+                { text: 'Évitant (tu vas nier)', score: { evitant: +20 } },
+                { text: 'Désorganisé (courage)', score: { desorganise: +20 } }
+              ],
+              gage: 'Regarde "Desperate Housewives". Bree = évitante, Susan = anxieuse. Identifie-toi.', gageReason: 'Psychologie appliquée version Wisteria Lane.' },
+
+            { num: 7, icon: '⚡', title: 'Coup de foudre', type: 'fondement', 
+              desc: 'Le coup de foudre existe. C\'est ton cerveau qui évalue en 0.2 secondes si quelqu\'un correspond à tes critères inconscients. Parfois il choisit mal.', 
+              funFact: 'Tu tombes amoureux de quelqu\'un qui ressemble à tes parents dans 70% des cas. Réfléchis à ça.',
+              question: 'Le coup de foudre :', options: [
+                { text: 'Ça m\'est arrivé et j\'ai foncé', score: { passionStabilite: +10 } },
+                { text: 'Ça m\'est arrivé et j\'ai fui', score: { evitant: +10 } },
+                { text: 'Jamais eu, j\'attends', score: { passionStabilite: -5 } },
+                { text: 'Mythe Disney 🙄', score: { redFlags: +10 } }
+              ],
+              gage: 'Écoute "L\'Amour est un soleil" de Hélène Ségara. Assume que t\'as fredonné.', gageReason: 'On juge pas. On assume.' },
+
+            { num: 8, icon: '🌡️', title: 'Aimer vs Désirer', type: 'fondement', 
+              desc: 'Désir : "Je te veux" (cerveau reptilien). Amour : "Je tiens à toi" (cerveau évolué). Deux circuits différents. Tu peux avoir l\'un sans l\'autre.', 
+              funFact: 'Le désir diminue naturellement. C\'est neurologique. Ton cerveau s\'habitue. Comme avec ta playlist préférée.',
+              question: 'Dans tes relations :', options: [
+                { text: 'D\'abord le désir, l\'amour vient après', score: { passionStabilite: +10 } },
+                { text: 'D\'abord l\'amitié, le désir vient (ou pas)', score: { passionStabilite: -10, secure: +5 } },
+                { text: 'Les deux en même temps (licorne)', score: { secure: +5 } },
+                { text: 'Je confonds souvent les deux', score: { redFlags: -5 } }
+              ],
+              gage: 'Écoute "I Want Your Sex" puis "Unchained Melody". Ressens la différence.', gageReason: 'George Michael = désir. Righteous Brothers = amour.' },
+
+            { num: 9, icon: '💫', title: 'L\'amour romantique', type: 'fondement', 
+              desc: 'L\'amour romantique date du XIXe siècle. Avant, on se mariait pour des vaches. Aujourd\'hui on veut tout : passion + stabilité + meilleur ami + amant. Pas de pression.', 
+              funFact: 'L\'idée de "l\'âme sœur" vient du romantisme allemand. Avant, personne cherchait "la bonne personne".',
+              question: 'Tu crois en l\'âme sœur ?', options: [
+                { text: 'Oui, quelqu\'un m\'attend', score: { passionStabilite: +10, anxieux: +5 } },
+                { text: 'Non, y\'a plein de gens compatibles', score: { secure: +5, redFlags: +5 } },
+                { text: 'J\'y croyais, puis j\'ai eu Tinder', score: { digital: +10 } },
+                { text: 'Je crois au fromage 🧀', score: { } }
+              ],
+              gage: 'Regarde un épisode de "Sissi". Tu vas soit adorer, soit vomir.', gageReason: 'Test ultime : romantique ou cynique ?' },
+
+            { num: 10, icon: '🔗', title: 'Dépendance affective', type: 'dependance', 
+              desc: 'Tu connais ce moment où ton téléphone vibre pas pendant 2h et tu te demandes si t\'es mort(e) pour l\'univers entier ? Bienvenue dans la dépendance affective. C\'est pas de l\'amour, c\'est de l\'angoisse déguisée.', 
+              funFact: '1 personne sur 3 souffre de dépendance affective. T\'es pas un cas, t\'es une statistique.',
+              question: 'Si ton/ta partenaire part 3 jours sans nouvelles :', options: [
+                { text: 'Je panique et j\'imagine le pire', score: { anxieux: +15, dependance: +15 } },
+                { text: 'Je m\'inquiète mais je gère', score: { secure: +5 } },
+                { text: 'Je profite de mon temps solo', score: { secure: +10, dependance: -10 } },
+                { text: '3 jours ? J\'avais pas remarqué', score: { evitant: +10 } }
+              ],
+              gage: 'Regarde "Titanic" et compte le nombre de fois où Rose aurait pu faire de la place sur la planche.', gageReason: 'Spoiler : Jack méritait mieux. Et la planche aussi.' },
+
+            { num: 11, icon: '📋', title: 'Les symptômes', type: 'dependance', 
+              desc: 'Checklist : ☐ Jalousie ☐ Besoin de réassurance H24 ☐ Tu checkes son téléphone ☐ Tu te sens vide sans l\'autre ☐ Tu changes de personnalité pour plaire. 3+ = on bosse.', 
+              funFact: 'La dépendance dit "je ne PEUX PAS être sans toi". L\'amour dit "je VEUX être avec toi".',
+              question: 'Combien t\'as coché :', options: [
+                { text: '0-1 (moine bouddhiste)', score: { secure: +10, dependance: -10 } },
+                { text: '2-3 (vigilance)', score: { anxieux: +5, dependance: +5 } },
+                { text: '4+ (on va bosser)', score: { anxieux: +15, dependance: +15 } },
+                { text: 'J\'ose pas cocher', score: { anxieux: +10, dependance: +10 } }
+              ],
+              gage: 'Écoute "Total Eclipse of the Heart". Compte les red flags dans les paroles.', gageReason: 'Dépendance affective en chanson. Mais ça reste un banger.' },
+
+            { num: 12, icon: '👶', title: 'Les racines', type: 'dependance', 
+              desc: 'La dépendance prend souvent racine dans l\'enfance. Ton cerveau a appris : "Pour être aimé, je dois..." Ces croyances te suivent jusqu\'à 47 ans si tu fais pas gaffe.', 
+              funFact: 'Les enfants dont les besoins n\'ont pas été comblés cherchent à réparer ça adultes.',
+              question: 'Ton enfance :', options: [
+                { text: 'Parents présents et aimants', score: { secure: +10, estime: +5 } },
+                { text: 'Parents aimants mais absents', score: { anxieux: +5 } },
+                { text: 'Parents présents mais froids', score: { evitant: +5, estime: -5 } },
+                { text: 'C\'est compliqué', score: { desorganise: +5 } }
+              ],
+              gage: 'Regarde "La Petite Maison dans la Prairie". Charles Ingalls = figure paternelle sécurisante.', gageReason: 'Charles savait aimer sans étouffer. Prends des notes.' },
+
+            { num: 13, icon: '🌀', title: 'Le cycle infernal', type: 'dependance', 
+              desc: '1. IDÉALISATION 2. FUSION 3. PEUR 4. SACRIFICE 5. RESSENTIMENT 6. RUPTURE (ou recommencer). Si tu reconnais ce schéma, bienvenue.', 
+              funFact: 'Les dépendants attirent souvent des évitants. Danse du "reviens !" / "laisse-moi".',
+              question: 'Tu te reconnais ?', options: [
+                { text: 'Oui, trop bien même', score: { anxieux: +10, dependance: +15 } },
+                { text: 'Un peu, certaines phases', score: { anxieux: +5, dependance: +5 } },
+                { text: 'Non, je connais pas', score: { secure: +5 } },
+                { text: 'Je suis en phase 4 là', score: { anxieux: +15, dependance: +20 } }
+              ],
+              gage: 'Écoute "Je t\'aime moi non plus" de Gainsbourg. Bande-son du cycle toxique.', gageReason: 'Gainsbourg et Birkin = relation toxique en musique. Et c\'est un classique.' },
+
+            { num: 14, icon: '😰', title: 'Peur de l\'abandon', type: 'dependance', 
+              desc: 'Cette peur te fait : accepter l\'inacceptable, rester dans des relations pourries, te transformer pour plaire, supplier quelqu\'un de rester. C\'est une prison. La clé, c\'est toi.', 
+              funFact: 'La peur de l\'abandon peut être plus forte que l\'amour.',
+              question: 'T\'as déjà :', options: [
+                { text: 'Supplié quelqu\'un de rester', score: { anxieux: +15, estime: -10, dependance: +15 } },
+                { text: 'Accepté l\'inacceptable par peur', score: { anxieux: +10, redFlags: -10, dependance: +10 } },
+                { text: 'Changé ta personnalité pour plaire', score: { anxieux: +10, estime: -10 } },
+                { text: 'Tout ça (et t\'es toujours là)', score: { anxieux: +15, dependance: +15, estime: -5 } }
+              ],
+              gage: 'Écoute "Ne me quitte pas" de Brel 3 fois de suite. Puis réalise que c\'est EXACTEMENT ce qu\'il ne faut PAS faire.', gageReason: 'Brel supplie pendant 4 minutes. Résultat : elle est partie quand même.' },
+
+            { num: 15, icon: '🎪', title: 'Triangle dramatique', type: 'dependance', 
+              desc: '3 rôles dans les relations toxiques : VICTIME, SAUVEUR, PERSÉCUTEUR. On change de rôle en permanence. C\'est épuisant.', 
+              funFact: 'Ce triangle explique 90% des disputes de couple. Et 100% des repas de Noël.',
+              question: 'Ton rôle préféré :', options: [
+                { text: 'Victime ("pourquoi moi")', score: { anxieux: +10, estime: -5 } },
+                { text: 'Sauveur ("je vais l\'aider")', score: { dependance: +10 } },
+                { text: 'Persécuteur ("c\'est sa faute")', score: { communication: -5 } },
+                { text: 'Je fais le tiercé 🎰', score: { desorganise: +5 } }
+              ],
+              gage: 'Regarde un épisode des "Feux de l\'Amour" en entier. Sans téléphone.', gageReason: 'Tu comprendras d\'où viennent tes attentes irréalistes.' },
+
+            { num: 16, icon: '🪞', title: 'Se perdre pour l\'autre', type: 'dependance', 
+              desc: 'Symptômes : tu adoptes SES goûts, tu abandonnes TES amis, tu n\'as plus de hobbies perso, tu dis "on" pour TOUT. T\'es devenu(e) un caméléon.', 
+              funFact: 'L\'amour sain te permet d\'être PLUS toi-même, pas moins.',
+              question: 'T\'as déjà :', options: [
+                { text: 'Arrêté un hobby pour quelqu\'un', score: { dependance: +10, estime: -5 } },
+                { text: 'Perdu des amis à cause d\'une relation', score: { dependance: +15, anxieux: +5 } },
+                { text: 'Dit "j\'adore ça" alors que non', score: { estime: -5 } },
+                { text: 'Oublié ce que JE voulais', score: { dependance: +15, estime: -10 } }
+              ],
+              gage: 'Liste 5 trucs que TU aimes. Si c\'est dur, c\'est un signal.', gageReason: 'Exercice simple. S\'il est dur, il est nécessaire.' },
+
+            { num: 17, icon: '💔', title: 'Rupture & dépendance', type: 'dependance', 
+              desc: 'Quitter quand t\'es dépendant(e) = sevrage de drogue dure. Le manque est PHYSIQUE. Tu checkes son profil à 3h du mat. C\'est NORMAL. C\'est CHIMIQUE. Ça PASSE.', 
+              funFact: 'Le cerveau après rupture = cerveau de toxicomane en manque. Mêmes zones.',
+              question: 'Après une rupture :', options: [
+                { text: 'Je stalke son profil', score: { anxieux: +10, digital: +5, dependance: +10 } },
+                { text: 'Je supprime/bloque tout', score: { evitant: +5, estime: +5 } },
+                { text: 'Je pleure devant Netflix', score: { } },
+                { text: 'Les trois, en boucle', score: { anxieux: +5, desorganise: +5 } }
+              ],
+              gage: 'Regarde "Eternal Sunshine of the Spotless Mind". Pleure si tu veux.', gageReason: 'Message : faut traverser la douleur, pas la contourner.' },
+
+            { num: 18, icon: '🛡️', title: 'Comment guérir ?', type: 'dependance', 
+              desc: 'La recette : 1. RECONNAÎTRE 2. Apprendre à être SEUL(E) 3. Reconstruire l\'ESTIME 4. Poser des LIMITES 5. THÉRAPIE si besoin. C\'est long. Ça vaut le coup.', 
+              funFact: 'Si tu te reconnais, t\'as déjà commencé. Bravo.',
+              question: 'T\'en es où :', options: [
+                { text: 'Je découvre que ça existe', score: { } },
+                { text: 'Je savais mais voulais pas voir', score: { estime: +5 } },
+                { text: 'Je bosse déjà dessus', score: { estime: +10, dependance: -10 } },
+                { text: 'Je suis guéri(e) ou en voie', score: { secure: +10, dependance: -15 } }
+              ],
+              gage: 'Passe une soirée seul(e). Sans Netflix. Sans téléphone. Juste toi et tes pensées.', gageReason: 'Si ça te fait flipper, c\'est pour ça qu\'il faut le faire.' },
+
+            { num: 19, icon: '🦋', title: 'Aimer sans dépendre', type: 'dependance', 
+              desc: 'Amour sain : "Je VEUX être avec toi" (choix). "Je suis bien avec toi ET sans toi". Dépendance : "J\'ai BESOIN de toi" (survie). Tu vois la différence ?', 
+              funFact: 'Les couples les plus solides = chacun a sa vie propre.',
+              question: 'Ta relation idéale :', options: [
+                { text: 'Fusionnels 24/7 🐨', score: { dependance: +15, anxieux: +5 } },
+                { text: 'Ensemble mais indépendants 🦋', score: { secure: +10, dependance: -10 } },
+                { text: 'Chacun sa vie, on se retrouve', score: { evitant: +5, dependance: -10 } },
+                { text: 'J\'ai pas trouvé l\'équilibre', score: { } }
+              ],
+              gage: 'Regarde un épisode de "La Petite Maison dans la Prairie". Charles Ingalls savait aimer sans étouffer.', gageReason: 'Charles et Caroline = couple sain goals.' },
+
+            { num: 20, icon: '🌱', title: 'L\'autonomie affective', type: 'dependance', 
+              desc: 'Être heureux(se) seul(e), avoir des projets PERSO, des amis à TOI. Le couple devient un BONUS, pas une NÉCESSITÉ. L\'autonomie, c\'est sexy.', 
+              funFact: 'Les gens autonomes attirent des relations plus saines.',
+              question: 'Sans relation, tu serais :', options: [
+                { text: 'Perdu(e) et triste', score: { dependance: +15, estime: -10 } },
+                { text: 'OK mais moins bien', score: { dependance: +5 } },
+                { text: 'Très bien, je kiffe ma vie', score: { secure: +10, dependance: -15, estime: +10 } },
+                { text: 'J\'ai pas testé depuis longtemps', score: { dependance: +5 } }
+              ],
+              gage: 'Planifie une activité solo ce week-end. Sans culpabiliser.', gageReason: 'Ton/ta partenaire survivra. Promis.' },
+
+            { num: 21, icon: '📱', title: 'La révolution Tinder', type: 'digital', 
+              desc: 'On juge en 2 secondes, on a l\'illusion du choix infini, on swipe aux toilettes. Démocratisation du dating ou déshumanisation ? Les deux.', 
+              funFact: 'Hommes swipent à droite 46% du temps. Femmes : 14%.',
+              question: 'Ton ratio de swipe :', options: [
+                { text: 'Je swipe sur tout, on verra', score: { digital: +10, passionStabilite: +5 } },
+                { text: 'Je lis chaque profil', score: { digital: +5, passionStabilite: -5 } },
+                { text: 'Je juge sur la 1ère photo', score: { digital: +10, passionStabilite: +10 } },
+                { text: 'J\'ai désinstallé', score: { digital: -10 } }
+              ],
+              gage: 'Compte combien de fois tu regardes ton téléphone en 1h.', gageReason: 'Pendant ce temps, tu aurais pu rencontrer quelqu\'un IRL.' },
+
+            { num: 22, icon: '🎭', title: 'Profil vs Réalité', type: 'digital', 
+              desc: 'Photo filtrée, bio survitaminée, "j\'adore voyager" (un week-end à Barcelone en 2019). Surprise au 1er date.', 
+              funFact: '81% des utilisateurs mentent sur leur profil.',
+              question: 'T\'as déjà menti sur :', options: [
+                { text: 'Mon âge', score: { digital: +5, estime: -5 } },
+                { text: 'Ma taille', score: { digital: +5, estime: -5 } },
+                { text: 'Mes photos', score: { digital: +5, estime: -5 } },
+                { text: 'Rien du tout', score: { estime: +10 } }
+              ],
+              gage: 'Retrouve ta photo de classe de CM2. Voilà, c\'est ça l\'authenticité.', gageReason: 'On était tous moches en CM2 et on a survécu.' },
+
+            { num: 23, icon: '🔄', title: 'Paradoxe du choix', type: 'digital', 
+              desc: 'Plus tu as de choix, moins tu choisis. Avec 1000 profils, tu deviens exigeant(e), insatisfait(e), incapable de t\'engager. FOMO permanent.', 
+              funFact: 'Les utilisateurs d\'applis ont 35% plus de mal à s\'engager.',
+              question: 'T\'as déjà :', options: [
+                { text: 'Quitté quelqu\'un de bien "au cas où"', score: { evitant: +10, digital: +10 } },
+                { text: 'Gardé l\'appli "en backup" en couple', score: { evitant: +5, digital: +10 } },
+                { text: 'Comparé ton/ta partenaire aux profils', score: { digital: +10, passionStabilite: +5 } },
+                { text: 'Aucun des trois', score: { secure: +5 } }
+              ],
+              gage: 'Passe 10 min à choisir un film sur Netflix sans en lancer aucun.', gageReason: 'C\'est pareil avec les gens.' },
+
+            { num: 24, icon: '👻', title: 'Ghosting', type: 'digital', 
+              desc: 'Le ghosting c\'est quand Casper décide que t\'existes plus. Du jour au lendemain. Pouf. Le néant. C\'est de la cruauté passive, et c\'est devenu normal.', 
+              funFact: '78% des millennials ont été ghostés. 50% l\'ont fait.',
+              question: 'Et toi :', options: [
+                { text: 'J\'ai été ghosté(e)', score: { anxieux: +5 } },
+                { text: 'J\'ai ghosté quelqu\'un', score: { evitant: +5, communication: -5 } },
+                { text: 'Les deux', score: { digital: +10 } },
+                { text: 'Jamais', score: { communication: +10 } }
+              ],
+              gage: 'Récite "Le Corbeau et le Renard" à voix haute. Le renard flatte, prend le fromage et disparaît.', gageReason: 'Premier ghost de la littérature française.' },
+
+            { num: 25, icon: '💣', title: 'Love Bombing', type: 'digital', 
+              desc: 'On te BOMBARDE d\'attention. Messages H24, "t\'es l\'amour de ma vie" après 3 jours. C\'est FLATTEUR. C\'est un RED FLAG. Personne de sain fait ça.', 
+              funFact: 'Le love bombing est une technique de manipulation des narcissiques.',
+              question: 'T\'as vécu le love bombing :', options: [
+                { text: 'Oui et j\'ai adoré (puis compris)', score: { anxieux: +5, redFlags: -5 } },
+                { text: 'Oui et j\'ai fui direct', score: { redFlags: +10 } },
+                { text: 'Non mais ça m\'attire', score: { anxieux: +10, redFlags: -10 } },
+                { text: 'Je savais pas ce que c\'était', score: { } }
+              ],
+              gage: 'Regarde un épisode des "Feux de l\'Amour" en entier. Sans téléphone.', gageReason: 'Tu comprendras d\'où viennent tes attentes irréalistes.' },
+
+            { num: 26, icon: '💬', title: 'Communication digitale', type: 'digital', 
+              desc: 'On COMMUNIQUE beaucoup. On se PARLE peu. 100 messages/jour ≠ intimité. Les émojis remplacent les émotions.', 
+              funFact: 'Tu peux tchatter des semaines sans vraiment connaître quelqu\'un.',
+              question: 'Ta communication en couple :', options: [
+                { text: '90% messages, 10% vocal', score: { digital: +15, communication: -5 } },
+                { text: 'On s\'appelle souvent', score: { digital: +5, communication: +5 } },
+                { text: 'On se voit, on se parle en vrai', score: { digital: -5, communication: +10 } },
+                { text: 'On s\'envoie des memes', score: { digital: +10 } }
+              ],
+              gage: 'Appelle quelqu\'un au lieu d\'envoyer un message. Sans prévenir par SMS avant.', gageReason: 'La voix transmet 10x plus d\'émotion qu\'un texte.' },
+
+            { num: 27, icon: '🚺', title: 'Bumble power', type: 'digital', 
+              desc: 'Sur Bumble, c\'est la femme qui fait le premier pas. Ça bouscule les codes. Certaines adorent, certains paniquent.', 
+              funFact: '72% des femmes sur Bumble se sentent plus en contrôle.',
+              question: 'Le premier pas devrait être fait par :', options: [
+                { text: 'L\'homme (tradition)', score: { digital: -10 } },
+                { text: 'La femme (renversement)', score: { digital: +5 } },
+                { text: 'Celui/celle qui veut', score: { secure: +5, digital: +5 } },
+                { text: 'C\'est compliqué', score: { } }
+              ],
+              gage: 'Inverse les rôles aujourd\'hui. Observe ce que ça fait.', gageReason: 'C\'est inconfortable et instructif.' },
+
+            { num: 28, icon: '✊', title: 'L\'ère post-MeToo', type: 'digital', 
+              desc: '#MeToo a libéré la parole, redéfini le consentement. C\'est nécessaire et historique.', 
+              funFact: '45% des hommes ont modifié leur façon de draguer depuis.',
+              question: '#MeToo pour toi :', options: [
+                { text: 'Nécessaire et positif', score: { communication: +5 } },
+                { text: 'Nécessaire mais anxiogène', score: { anxieux: +5 } },
+                { text: 'Exagéré', score: { } },
+                { text: 'Je sais pas trop', score: { } }
+              ],
+              gage: 'Regarde "I May Destroy You" (HBO). C\'est dur, c\'est beau, c\'est important.', gageReason: 'Cette série pose les bonnes questions sans réponses faciles.' },
+
+            { num: 29, icon: '🎯', title: 'Les algorithmes', type: 'digital', 
+              desc: 'L\'algo décide qui tu vois. Tu crois que tu choisis ? Non. Tu choisis parmi ce qu\'on te MONTRE.', 
+              funFact: 'Les algos sont optimisés pour te garder sur l\'app, pas pour te trouver l\'amour.',
+              question: 'Tu fais confiance à l\'algo :', options: [
+                { text: 'Oui, il me connaît', score: { digital: +15 } },
+                { text: 'Non, je lutte contre', score: { digital: +5, redFlags: +5 } },
+                { text: 'J\'y avais pas pensé', score: { digital: +5 } },
+                { text: 'C\'est flippant', score: { redFlags: +5 } }
+              ],
+              gage: 'Swipe 5 profils qui ne sont PAS ton type. Casse l\'algorithme.', gageReason: 'Surprends-toi. Surprends l\'algo.' },
+
+            { num: 30, icon: '🐌', title: 'Le slow dating', type: 'digital', 
+              desc: 'Moins de dates, plus de qualité. Prendre le temps de CONNAÎTRE quelqu\'un. Old school et révolutionnaire.', 
+              funFact: 'Le slow dating augmente les chances de relation durable de 60%.',
+              question: 'T\'es plutôt :', options: [
+                { text: 'Fast dating (plusieurs dates/semaine)', score: { digital: +15, passionStabilite: +10 } },
+                { text: 'Slow dating (une personne à la fois)', score: { digital: -5, secure: +5 } },
+                { text: 'No dating (pause)', score: { evitant: +5 } },
+                { text: 'C\'est quoi un date ?', score: { digital: -15 } }
+              ],
+              gage: 'Si t\'as un date bientôt, range ton téléphone pendant 2h. Présence totale.', gageReason: 'La présence, c\'est le plus beau cadeau. Et ça coûte rien.' },
+
+            { num: 31, icon: '🕳️', title: '⭐ LE PUITS', type: 'digital', 
+              desc: 'Tu es tombé(e) dans le Puits de la Solitude. La solitude fait peur mais elle est aussi une opportunité.', 
+              funFact: 'La peur de la solitude est souvent une peur de soi-même.',
+              question: 'La solitude te fait peur parce que :', options: [
+                { text: 'Je me retrouve avec mes pensées', score: { anxieux: +10, estime: -5 } },
+                { text: 'Je me sens pas assez bien pour moi', score: { estime: -15 } },
+                { text: 'La société dit seul = raté', score: { } },
+                { text: 'En fait ça va, j\'aime ma compagnie', score: { secure: +10, estime: +10 } }
+              ],
+              gage: 'Écoute "All By Myself" de Céline Dion. Chante fort. Assume le drama.', gageReason: 'C\'est ridicule et c\'est exactement ce qu\'il te faut.' },
+
+            { num: 32, icon: '🗣️', title: 'Communication 101', type: 'relation', 
+              desc: 'Les 4 cavaliers de l\'apocalypse du couple : 1. CRITIQUE 2. MÉPRIS (yeux au ciel) 3. DÉFENSIVE 4. MUR (silence-punition). Si tu reconnais ces 4, combo perdant.', 
+              funFact: 'Un couple qui utilise ces 4 a 90% de chances de divorcer.',
+              question: 'Ton cavalier préféré :', options: [
+                { text: 'La critique ("tu fais toujours...")', score: { communication: -5 } },
+                { text: 'Le mépris (yeux au ciel)', score: { communication: -10 } },
+                { text: 'La défensive ("oui mais toi...")', score: { communication: -5, anxieux: +5 } },
+                { text: 'Le mur (je parle plus)', score: { communication: -10, evitant: +10 } }
+              ],
+              gage: 'Prochaine dispute, identifie quel cavalier TU utilises.', gageReason: 'La conscience, c\'est le premier pas.' },
+
+            { num: 33, icon: '🥊', title: 'Se disputer sain', type: 'relation', 
+              desc: 'Dispute SAINE : on parle du problème, on écoute. Dispute TOXIQUE : insultes, vieux dossiers, "tu fais TOUJOURS ça".', 
+              funFact: 'Les couples qui se disputent sainement durent plus longtemps.',
+              question: 'En dispute :', options: [
+                { text: 'Je crie, je dis des trucs que je regrette', score: { communication: -5, anxieux: +5 } },
+                { text: 'Je me ferme, mur de silence', score: { evitant: +10, communication: -10 } },
+                { text: 'J\'essaie de parler calmement', score: { communication: +10, secure: +5 } },
+                { text: 'J\'évite les disputes à tout prix', score: { evitant: +10, communication: -5 } }
+              ],
+              gage: 'Apprends : "Je me sens [émotion] quand tu [comportement]."', gageReason: 'Communication Non-Violente. Ça change tout.' },
+
+            { num: 34, icon: '🔐', title: 'La confiance', type: 'relation', 
+              desc: 'La confiance c\'est comme un Jenga. Tu passes des heures à construire une tour, et un seul mouvement de travers fait tout s\'effondrer. Puis tu te retrouves à 3h du mat à vérifier son téléphone pendant qu\'il/elle dort. Classe. Vraiment classe.', 
+              funFact: 'Chaque promesse tenue = +1 point de confiance. Chaque mensonge = -100 points. Chaque "j\'ai pas vu ton message" = -50 points. Les maths de l\'amour sont impitoyables.',
+              question: 'Tu fais confiance :', options: [
+                { text: 'Facilement, puis déçu (cycle classique)', score: { anxieux: +5, redFlags: -10 } },
+                { text: 'Difficilement, mais c\'est solide', score: { evitant: +5 } },
+                { text: 'J\'ai du mal depuis une trahison', score: { evitant: +5, anxieux: +5 } },
+                { text: 'Je checke le téléphone (honnête)', score: { anxieux: +15, dependance: +10 } }
+              ],
+              gage: 'Ferme les yeux et tombe en arrière dans les bras de quelqu\'un. Si t\'es seul(e), tombe sur ton lit en criant "JE TE FAIS CONFIAAAANCE" à l\'univers. Oui, à voix haute. Oui, c\'est ridicule.',
+              gageReason: 'Le trust fall c\'est la métaphore de la confiance. Et crier dans le vide c\'est thérapeutique.' },
+
+            { num: 35, icon: '💔', title: 'L\'infidélité', type: 'relation', 
+              desc: 'Physique ? Émotionnelle ? Digitale ? Un like sur la photo de ton ex à 2h du mat ? La définition varie. La blessure est universelle.', 
+              funFact: '40% des couples survivent à une infidélité.',
+              question: 'L\'infidélité c\'est :', options: [
+                { text: 'Impardonnable, point final', score: { redFlags: +10 } },
+                { text: 'Ça dépend du contexte', score: { secure: +5 } },
+                { text: 'J\'ai déjà pardonné', score: { anxieux: +5 } },
+                { text: 'J\'ai été infidèle', score: { evitant: +5 } }
+              ],
+              gage: 'Définis ce que TU considères comme infidélité. Y\'a pas de bonne réponse. Juste TA réponse.', gageReason: 'Beaucoup de couples n\'ont jamais eu cette conversation.' },
+
+            { num: 36, icon: '⚖️', title: 'Les compromis', type: 'relation', 
+              desc: 'Compromis SAIN : "Je cède sur X, tu cèdes sur Y." Sacrifice TOXIQUE : "Je renonce à tout."', 
+              funFact: 'Couple équilibré = 50/50. Si c\'est 90/10, c\'est pas du compromis.',
+              question: 'Dans ton couple :', options: [
+                { text: 'Je fais plus de compromis', score: { dependance: +10, estime: -5 } },
+                { text: 'L\'autre en fait plus', score: { evitant: +5 } },
+                { text: 'C\'est équilibré', score: { secure: +10 } },
+                { text: 'On compromet pas, c\'est la guerre', score: { communication: -10 } }
+              ],
+              gage: 'Liste 3 compromis que TU as faits. Et 3 de l\'autre. Compare.', gageReason: 'L\'équilibre, ça s\'observe.' },
+
+            { num: 37, icon: '🙏', title: 'Le respect', type: 'relation', 
+              desc: 'Le respect c\'est le SMIC du couple. Le minimum légal. Si t\'as même pas ça, t\'es en dessous du seuil de pauvreté relationnelle. Et y\'a pas d\'APL pour ça. Le mépris, par contre, c\'est le termite de l\'amour. Ça bouffe tout de l\'intérieur sans que tu le voies. Jusqu\'au jour où le plancher s\'effondre.', 
+              funFact: 'Le MÉPRIS (yeux au ciel, soupirs, petits ricanements) est le prédicteur n°1 de divorce. Plus que l\'infidélité. Plus que l\'argent. Ce petit "pfff" que tu fais quand il/elle parle ? Ça tue plus sûrement qu\'une affaire.',
+              question: 'Tu te sens respecté(e) :', options: [
+                { text: 'Toujours (garde ce trésor)', score: { secure: +10, estime: +5 } },
+                { text: 'La plupart du temps', score: { secure: +5 } },
+                { text: 'Pas toujours (red flag)', score: { anxieux: +5, estime: -5 } },
+                { text: 'Rarement (GROS red flag)', score: { dependance: +10, estime: -10 } }
+              ],
+              gage: 'Mets-toi debout. Enroule-toi dans une couverture comme une toge romaine. Déclare à voix haute : "JE MÉRITE LE RESPECT CAR JE SUIS UN(E) EMPEREUR/IMPÉRATRICE DE L\'AMOUR". Fais un salut romain. Assume.',
+              gageReason: 'Les empereurs romains se respectaient eux-mêmes. Toi aussi tu peux. Même en pyjama.' },
+
+            { num: 38, icon: '🏠', title: 'L\'espace perso', type: 'relation', 
+              desc: 'Aimer ≠ être collé H24. L\'espace c\'est : du temps SEUL(E), des amis à TOI, des activités PERSO. Trop de fusion étouffe.', 
+              funFact: 'Les couples avec activités séparées ont une vie sexuelle plus active.',
+              question: 'Ton besoin d\'espace :', options: [
+                { text: 'Beaucoup (j\'ai BESOIN de respirer)', score: { evitant: +10, dependance: -10 } },
+                { text: 'Modéré (équilibré)', score: { secure: +10 } },
+                { text: 'Peu (j\'aime être ensemble)', score: { anxieux: +5, dependance: +5 } },
+                { text: 'Zéro (fusion totale)', score: { dependance: +15, anxieux: +10 } }
+              ],
+              gage: 'Planifie une activité SEUL(E) cette semaine. Sans culpabiliser.', gageReason: 'Il/elle survivra. Et tu reviendras plus intéressant(e).' },
+
+            { num: 39, icon: '📅', title: 'La routine', type: 'relation', 
+              desc: 'Routine qui TUE : Netflix-bouffe-dodo-repeat. Routine qui RENFORCE : rituels à deux, base stable pour l\'aventure.', 
+              funFact: 'Une nouvelle activité par mois = +45% de satisfaction.',
+              question: 'Ta relation avec la routine :', options: [
+                { text: 'J\'adore, c\'est sécurisant', score: { passionStabilite: -10, secure: +5 } },
+                { text: 'Je déteste, c\'est ennuyeux', score: { passionStabilite: +10 } },
+                { text: 'Ça dépend de quelle routine', score: { secure: +5 } },
+                { text: 'On est en plein dedans, HELP', score: { } }
+              ],
+              gage: 'Propose un truc NOUVEAU cette semaine. Casse le Netflix-pizza.', gageReason: 'La routine se casse avec des micro-aventures.' },
+
+            { num: 40, icon: '🌱', title: 'Grandir ensemble', type: 'relation', 
+              desc: 'Les gens évoluent. La question c\'est pas "on s\'aime ?" C\'est "on va où ?" Et "c\'est le même endroit ?"', 
+              funFact: 'Beaucoup de ruptures viennent pas d\'un désamour mais d\'une divergence de chemins.',
+              question: 'Ton/ta partenaire et toi :', options: [
+                { text: 'Même direction, on est alignés', score: { secure: +10 } },
+                { text: 'Pas sûr(e), faudrait en parler', score: { communication: -5 } },
+                { text: 'Pas vraiment, ça diverge', score: { } },
+                { text: 'Directions opposées', score: { } }
+              ],
+              gage: 'Écris où TU te vois dans 5 ans. Demande à l\'autre. Comparez.', gageReason: 'Cette conversation peut sauver ou terminer un couple.' },
+
+            { num: 41, icon: '💕', title: 'L\'amour mature', type: 'relation', 
+              desc: 'L\'amour "pour de vrai" c\'est PAS des papillons permanents. C\'est vouloir le BIEN de l\'autre, accepter ses DÉFAUTS, CHOISIR cette personne chaque jour.', 
+              funFact: 'L\'amour mature ressemble moins à un film qu\'à une danse. Parfois on se marche sur les pieds.',
+              question: 'T\'as déjà aimé "pour de vrai" ?', options: [
+                { text: 'Oui, une fois', score: { } },
+                { text: 'Oui, plusieurs fois', score: { } },
+                { text: 'Honnêtement, je suis pas sûr(e)', score: { } },
+                { text: 'Toujours en recherche', score: { passionStabilite: +5 } }
+              ],
+              gage: 'Liste 3 défauts de quelqu\'un que tu aimes que tu ACCEPTES.', gageReason: 'Aimer les qualités c\'est facile. Accepter les défauts, c\'est le vrai test.' },
+
+            { num: 42, icon: '🌀', title: '⭐ LABYRINTHE', type: 'relation', 
+              desc: 'Tu t\'es perdu(e) dans tes pensées... Probablement en pensant à un(e) ex.', 
+              funFact: 'Penser à un(e) ex ne veut pas dire qu\'on veut revenir. Le cerveau traite, digère, archive.',
+              question: 'T\'as repensé à un(e) ex récemment ?', options: [
+                { text: 'Oui, souvent', score: { anxieux: +5 } },
+                { text: 'Oui, parfois', score: { } },
+                { text: 'Oui, genre juste là (grillé)', score: { } },
+                { text: 'Non (soit t\'es un moine, soit tu mens)', score: { secure: +5 } }
+              ],
+              gage: 'Écris une lettre à ton ex. Dis TOUT. Puis brûle-la. Ou garde-la. Mais ENVOIE-LA PAS.', gageReason: 'Rituel de closure. L\'important c\'est d\'écrire, pas d\'envoyer.' },
+
+            { num: 43, icon: '💪', title: 'L\'estime de soi', type: 'devperso', 
+              desc: 'Si tu t\'aimes pas toi-même, comment tu veux qu\'on t\'aime CORRECTEMENT ? L\'estime de soi c\'est le socle.', 
+              funFact: 'Les gens avec une bonne estime attirent des relations plus saines.',
+              question: 'Ton estime, sur 10 :', options: [
+                { text: '1-3 (on va bosser)', score: { estime: -10 } },
+                { text: '4-6 (y\'a du potentiel)', score: { } },
+                { text: '7-8 (bien !)', score: { estime: +10 } },
+                { text: '9-10 (Bouddha ou déni ?)', score: { estime: +5 } }
+              ],
+              gage: 'Dis 3 trucs que t\'AIMES chez toi. À voix haute. Maintenant.', gageReason: 'Si c\'est dur, c\'est pour ça qu\'il faut le faire.' },
+
+            { num: 44, icon: '🚧', title: 'Poser des limites', type: 'devperso', 
+              desc: 'Une limite c\'est pas un mur. C\'est une porte avec une règle. C\'est pas être méchant(e), c\'est être CLAIR(E).', 
+              funFact: 'Les gens qui posent des limites sont perçus comme PLUS respectables.',
+              question: 'T\'es à l\'aise avec les limites :', options: [
+                { text: 'Non, je sais pas dire non', score: { dependance: +10, estime: -5 } },
+                { text: 'J\'y arrive mais c\'est dur', score: { anxieux: +5 } },
+                { text: 'Oui, je dis non quand il faut', score: { secure: +10, estime: +5 } },
+                { text: 'Mes limites sont des murailles', score: { evitant: +10 } }
+              ],
+              gage: 'Cette semaine, dis NON à quelque chose. Sans t\'excuser 15 fois.', gageReason: 'Le "non" sans explication est un droit.' },
+
+            { num: 45, icon: '🦢', title: '⭐ L\'OIE SAGE', type: 'devperso', 
+              desc: 'Tu tombes sur l\'Oie ! Sagesse : "On ne peut pas aimer quelqu\'un plus qu\'il ne s\'aime lui-même." BONUS : Relance le dé !', 
+              funFact: 'L\'oie symbolise la chance et la sagesse depuis le XVIe siècle.',
+              question: 'Cette sagesse te parle ?', options: [
+                { text: 'Oui, tellement', score: { estime: +5 } },
+                { text: 'Un peu, je dois y réfléchir', score: { } },
+                { text: 'Je comprends pas', score: { } },
+                { text: 'L\'oie raconte n\'importe quoi', score: { } }
+              ],
+              gage: 'Fais "COIN COIN" à voix haute. Fort. L\'oie t\'observe.', gageReason: 'C\'est débile et ça fait sourire. L\'oie approuve.' },
+
+            { num: 46, icon: '🕊️', title: 'Le pardon', type: 'devperso', 
+              desc: 'Pardonner c\'est PAS oublier, excuser, ou accepter que ça recommence. C\'est lâcher la rancœur pour TOI.', 
+              funFact: 'Garder de la rancœur = boire du poison en espérant que l\'autre meure.',
+              question: 'Y\'a quelqu\'un que t\'as pas pardonné ?', options: [
+                { text: 'Oui, pas prêt(e)', score: { anxieux: +5 } },
+                { text: 'Oui, j\'y travaille', score: { estime: +5 } },
+                { text: 'J\'ai pardonné mais pas oublié', score: { secure: +5 } },
+                { text: 'Je pardonne facilement', score: { secure: +5 } }
+              ],
+              gage: 'Dis dans ta tête : "Je te libère. Je me libère." C\'est un début.', gageReason: 'Le pardon est un processus, pas un moment.' },
+
+            { num: 47, icon: '🏝️', title: 'Seul ≠ Solitaire', type: 'devperso', 
+              desc: 'Être SEUL(E) = état physique. Se sentir SEUL(E) = état émotionnel. Tu peux être en couple et te sentir terriblement seul(e).', 
+              funFact: '25% des gens EN COUPLE se sentent seuls.',
+              question: 'Tu te sens seul(e) :', options: [
+                { text: 'Souvent, même entouré(e)', score: { anxieux: +10, estime: -5 } },
+                { text: 'Parfois, c\'est humain', score: { } },
+                { text: 'Rarement', score: { secure: +5, estime: +5 } },
+                { text: 'Jamais', score: { secure: +10 } }
+              ],
+              gage: 'Écris-toi une lettre d\'amour. À toi-même. C\'est chelou et puissant.', gageReason: 'Si tu peux pas t\'écrire une lettre d\'amour, comment en recevoir une ?' },
+
+            { num: 48, icon: '🚩', title: 'Red Flags', type: 'devperso', 
+              desc: 'Red flags : critique constante, jalousie excessive, contrôle, "toutes mes ex sont folles", isolation de tes proches.', 
+              funFact: 'On VOIT souvent les red flags mais on CHOISIT de les ignorer.',
+              question: 'T\'as déjà ignoré un red flag :', options: [
+                { text: 'Oui, et j\'ai regretté', score: { redFlags: -5 } },
+                { text: 'Oui, mais ça s\'est bien passé', score: { } },
+                { text: 'Non, je fuis aux premiers signes', score: { redFlags: +15 } },
+                { text: 'Je suis peut-être un red flag', score: { } }
+              ],
+              gage: 'Repense à ta dernière relation. Y\'avait-il des red flags au début ?', gageReason: 'L\'honnêteté avec soi-même, premier pas pour pas répéter.' },
+
+            { num: 49, icon: '🎈', title: 'Le lâcher-prise', type: 'devperso', 
+              desc: 'Lâcher prise c\'est PAS abandonner. C\'est arrêter de vouloir TOUT CONTRÔLER.', 
+              funFact: 'Le besoin de contrôle vient souvent de l\'anxiété.',
+              question: 'T\'es plutôt :', options: [
+                { text: 'Control freak assumé(e)', score: { anxieux: +10 } },
+                { text: 'J\'essaie de lâcher prise', score: { anxieux: +5 } },
+                { text: 'Je gère bien l\'incertitude', score: { secure: +10 } },
+                { text: 'Je m\'en fous de tout', score: { evitant: +5 } }
+              ],
+              gage: 'Mets "Let It Go" de la Reine des Neiges. Chante "LIBÉRÉÉÉÉ, DÉLIVRÉÉÉÉ...".', gageReason: 'Elsa a compris. Le contrôle isole, le lâcher-prise libère.' },
+
+            { num: 50, icon: '🛋️', title: 'La thérapie', type: 'devperso', 
+              desc: 'Un psy c\'est un COACH pour ton cerveau. Y aller c\'est un acte de FORCE, pas de faiblesse.', 
+              funFact: 'En France, 1 personne sur 4 consultera un psy.',
+              question: 'T\'as déjà vu un psy :', options: [
+                { text: 'Oui, ça m\'a aidé', score: { estime: +10 } },
+                { text: 'Oui, c\'était moyen', score: { } },
+                { text: 'Non, mais j\'y pense', score: { estime: +5 } },
+                { text: 'Non, c\'est pas pour moi', score: { } }
+              ],
+              gage: 'Si t\'y penses : recherche 3 psys dans ta ville. Juste rechercher.', gageReason: 'Le plus dur c\'est de chercher. Après ça se fait.' },
+
+            { num: 51, icon: '💗', title: 'S\'aimer soi-même', type: 'devperso', 
+              desc: 'S\'aimer c\'est PAS du narcissisme. C\'est se parler comme à un AMI, s\'accorder le droit à l\'erreur, prendre SOIN de soi.', 
+              funFact: 'La façon dont tu te parles influence ta réalité.',
+              question: 'Ta voix intérieure dit :', options: [
+                { text: 'Des trucs plutôt gentils', score: { estime: +15, secure: +5 } },
+                { text: 'Moitié-moitié', score: { } },
+                { text: 'Surtout des critiques', score: { estime: -10, anxieux: +5 } },
+                { text: 'C\'est un procureur là-dedans', score: { estime: -15 } }
+              ],
+              gage: 'Pendant 24h, parle-toi comme à ton meilleur ami.', gageReason: 'Si un ami te parlait comme ta voix intérieure, tu le garderais ?' },
+
+            { num: 52, icon: '🔒', title: '⭐ PRISON DES REGRETS', type: 'devperso', 
+              desc: 'Tu es prisonnier(e) de tes regrets. On connaît tous cette prison : tu te réveilles à 3h du mat et ton cerveau décide de te repasser en boucle ce truc gênant que t\'as dit en 2016. Ou cette personne que t\'as laissée partir. Ou ce message jamais envoyé. Ton cerveau est un gardien sadique qui adore te torturer avec le passé.', 
+              funFact: 'À la fin de leur vie, les gens regrettent plus ce qu\'ils n\'ont PAS fait que ce qu\'ils ont fait. Les "et si..." pèsent plus lourd que les "j\'aurais pas dû". Donc fonce. Au pire, t\'auras une bonne histoire.',
+              question: 'Ton plus grand regret en amour :', options: [
+                { text: 'Quelqu\'un que j\'ai laissé partir', score: { anxieux: +5 } },
+                { text: 'Quelqu\'un avec qui je suis resté(e) trop longtemps', score: { redFlags: -5 } },
+                { text: 'Des mots que j\'ai jamais dits', score: { communication: -5 } },
+                { text: 'Des mots que j\'aurais PAS dû dire', score: { communication: -5, anxieux: +5 } }
+              ],
+              gage: 'Écris ton plus gros regret sur un papier. Puis brûle-le (ou déchire-le en 1000 morceaux si t\'as pas de briquet). Pendant que ça brûle/se déchire, hurle "JE TE LIBÈRE, VA-T-EN, DÉGAGE DE MA TÊTE". Les voisins vont se poser des questions. On s\'en fout.',
+              gageReason: 'C\'est un rituel chamanique improvisé. Et ça marche mieux que de ruminer dans ton lit.' },
+
+            { num: 53, icon: '😊', title: 'Bonheur solo', type: 'devperso', 
+              desc: 'Le but c\'est pas "trouver quelqu\'un". C\'est être capable d\'être HEUREUX(SE) SEUL(E). Le couple devient un BONUS.', 
+              funFact: 'Les gens heureux seuls font les meilleurs partenaires.',
+              question: 'Tu serais heureux(se) seul(e) pour toujours ?', options: [
+                { text: 'Non, impossible', score: { dependance: +15, estime: -5 } },
+                { text: 'Bof, moins bien mais vivable', score: { dependance: +5 } },
+                { text: 'Oui, ma vie est chouette', score: { secure: +15, dependance: -15, estime: +10 } },
+                { text: 'J\'y ai jamais réfléchi', score: { } }
+              ],
+              gage: 'Planifie un truc qui te rend heureux(se). Seul(e). Sans le poster.', gageReason: 'Un bonheur qu\'on partage pas sur Insta, c\'est encore un bonheur.' },
+
+            { num: 54, icon: '🎬', title: 'L\'amour au ciné', type: 'culture', 
+              desc: 'Hollywood nous a menti : le nice guy finit par avoir la fille (non), l\'amour surmonte TOUT (non), un grand geste = pardon (non).', 
+              funFact: 'Les fans de comédies romantiques ont des attentes plus irréalistes.',
+              question: 'Ton film d\'amour préféré :', options: [
+                { text: 'Un truc réaliste', score: { redFlags: +5 } },
+                { text: 'Disney', score: { passionStabilite: +5 } },
+                { text: 'Comédie romantique', score: { passionStabilite: +10 } },
+                { text: 'Je regarde pas ces trucs', score: { } }
+              ],
+              gage: 'Regarde "500 Days of Summer". Tu vas réaliser que t\'étais Tom.', gageReason: 'Film obligatoire avant d\'avoir le droit d\'utiliser Tinder.' },
+
+            { num: 55, icon: '📚', title: 'L\'amour en livres', type: 'culture', 
+              desc: 'De Roméo et Juliette à Fifty Shades, la littérature a façonné nos attentes de DRAMA.', 
+              funFact: 'Roméo et Juliette : 4 jours, 6 morts. C\'est pas une histoire d\'amour.',
+              question: 'Le couple littéraire qui t\'a influencé :', options: [
+                { text: 'Roméo & Juliette (tragique)', score: { passionStabilite: +10 } },
+                { text: 'Elizabeth & Darcy', score: { } },
+                { text: 'Bella & Edward (problématique)', score: { dependance: +5 } },
+                { text: 'Je lis pas', score: { } }
+              ],
+              gage: 'Relis une histoire d\'amour d\'ado. Avec tes yeux d\'adulte. Compte les red flags.', gageReason: 'Tu vas être surpris(e) par ce que tu trouvais "romantique".' },
+
+            { num: 56, icon: '🎵', title: 'L\'amour en musique', type: 'culture', 
+              desc: '"Every Breath You Take" c\'est romantique ? C\'est du STALKING. Sting l\'a dit. Et on la passe aux mariages.', 
+              funFact: 'La pop confond souvent amour et OBSESSION.',
+              question: 'Ta chanson d\'amour préférée :', options: [
+                { text: 'Un truc sain (ça existe ?)', score: { redFlags: +5 } },
+                { text: 'Un truc intense', score: { passionStabilite: +5 } },
+                { text: 'Un truc toxique si on lit les paroles', score: { } },
+                { text: 'J\'écoute du metal', score: { } }
+              ],
+              gage: 'Écoute "Creep" de Radiohead. C\'est PAS une chanson d\'amour.', gageReason: 'Thom Yorke chante qu\'il est un "creep" et on trouve ça romantique.' },
+
+            { num: 57, icon: '📱', title: 'L\'amour sur Insta', type: 'culture', 
+              desc: 'Ce qu\'on VOIT : couples parfaits. Ce qu\'on VOIT PAS : disputes, doutes, divorce 6 mois après le post.', 
+              funFact: 'Les couples qui POSTENT LE PLUS sont statistiquement plus INSÉCURES.',
+              question: 'Tu postes ton couple :', options: [
+                { text: 'Souvent', score: { anxieux: +5, digital: +10 } },
+                { text: 'Parfois', score: { digital: +5 } },
+                { text: 'Jamais, c\'est privé', score: { secure: +5 } },
+                { text: 'J\'ai pas de couple', score: { } }
+              ],
+              gage: 'Scrolle 5 min. Rappelle-toi : 1% de leur vie. Les 99% ressemblent aux tiens.', gageReason: 'Instagram = highlight reel, pas documentaire.' },
+
+            { num: 58, icon: '💀', title: '⭐ CASE MAUDITE', type: 'culture', 
+              desc: 'OUCH. Case maudite. Repartir de zéro = NOUVELLE CHANCE. L\'opportunité de faire DIFFÉREMMENT.', 
+              funFact: 'Les gens qui ont "échoué" plusieurs fois font souvent les MEILLEURS partenaires.',
+              question: 'Si tu recommençais à zéro :', options: [
+                { text: 'Je referais pareil', score: { } },
+                { text: 'Je changerais TOUT', score: { } },
+                { text: 'Quelques trucs clés', score: { estime: +5 } },
+                { text: 'Je sais pas', score: { } }
+              ],
+              gage: 'Regarde "Eternal Sunshine" (encore). Même en effaçant tout, on referait les mêmes choix.', gageReason: 'On peut pas effacer le passé. Mais on peut pas le répéter.' },
+
+            { num: 59, icon: '⏳', title: 'L\'amour selon l\'âge', type: 'culture', 
+              desc: 'À 20 ans : PASSION. À 30 ans : projets. À 40 ans : choix éclairés. On n\'aime pas pareil toute sa vie.', 
+              funFact: 'Les gens qui se marient APRÈS 30 ans divorcent moins.',
+              question: 'Ton amour a évolué avec l\'âge ?', options: [
+                { text: 'Oui, plus mature', score: { secure: +5 } },
+                { text: 'Oui, plus méfiant(e)', score: { evitant: +5 } },
+                { text: 'Non, mêmes erreurs', score: { } },
+                { text: 'Pas assez d\'XP', score: { } }
+              ],
+              gage: 'Appelle quelqu\'un de plus vieux. Demande son meilleur conseil sur l\'amour. Écoute.', gageReason: 'La sagesse existe. Elle est gratuite. Faut juste demander.' },
+
+            { num: 60, icon: '🔨', title: 'Mythes à casser', type: 'culture', 
+              desc: 'MYTHE : Une personne parfaite t\'attend. RÉALITÉ : Plein de gens compatibles. MYTHE : L\'amour suffit. RÉALITÉ : Il faut aussi du travail.', 
+              funFact: 'Ces mythes viennent des contes de fées. Espérance de vie 35 ans à l\'époque.',
+              question: 'Quel mythe t\'as cru longtemps :', options: [
+                { text: 'L\'âme sœur existe', score: { passionStabilite: +5 } },
+                { text: 'L\'amour suffit', score: { passionStabilite: +5 } },
+                { text: 'On "sait" quand c\'est la bonne personne', score: { passionStabilite: +5 } },
+                { text: 'Tous les trois', score: { passionStabilite: +10, redFlags: -5 } }
+              ],
+              gage: 'Identifie UN mythe auquel tu crois encore. Questionne-le.', gageReason: 'Déconstruire ses croyances = inconfortable mais libérateur.' },
+
+            { num: 61, icon: '📖', title: 'TON histoire', type: 'culture', 
+              desc: 'Les films, livres, chansons t\'ont dit comment aimer. MAIS. Ton histoire d\'amour, c\'est TOI qui l\'écris.', 
+              funFact: 'Les couples les plus heureux ont créé leurs propres règles.',
+              question: 'Comment tu veux écrire TON histoire ?', options: [
+                { text: 'Comme dans les films', score: { passionStabilite: +5 } },
+                { text: 'DIFFÉREMMENT des films', score: { secure: +5 } },
+                { text: 'Je sais pas encore', score: { } },
+                { text: 'En la vivant', score: { secure: +5 } }
+              ],
+              gage: 'Écris 3 phrases sur l\'amour que TU veux. Garde cette feuille.', gageReason: 'Quand tu sais ce que tu veux, tu le reconnais quand tu le trouves.' },
+
+            { num: 62, icon: '🚪', title: 'Avant l\'arrivée', type: 'culture', 
+              desc: 'Tu y es presque. 62 cases. 62 concepts. T\'as fait le voyage, t\'as peut-être appris des trucs. L\'important c\'est d\'avoir joué.', 
+              funFact: 'Le fait d\'avoir joué prouve que tu VEUX comprendre. C\'est plus que ce que beaucoup font.',
+              question: 'Le plus important que t\'as appris :', options: [
+                { text: 'Quelque chose sur moi-même', score: { estime: +5 } },
+                { text: 'Quelque chose sur mes relations', score: { communication: +5 } },
+                { text: 'Quelque chose sur l\'amour', score: { } },
+                { text: 'Que j\'aime les jeux absurdes', score: { } }
+              ],
+              gage: 'Partage UNE case de ce jeu avec quelqu\'un.', gageReason: 'L\'apprentissage partagé, ça ancre.' },
+
+            { num: 63, icon: '🏆', title: 'ARRIVÉE !', type: 'end', 
+              desc: 'BRAVO ! 🎉 Tu as terminé le Voyage de l\'Amour ! 63 cases, 63 apprentissages, peut-être des larmes. L\'amour c\'est un voyage. Tu viens de faire un bout de chemin.', 
+              funFact: 'Tu peux revenir jouer. Tes réponses changeront avec le temps.',
+              question: 'Tu repars avec quoi ?', options: [
+                { text: 'Plus de questions que de réponses', score: { } },
+                { text: 'Une meilleure compréhension de moi', score: { estime: +10 } },
+                { text: 'L\'envie de changer des trucs', score: { estime: +5 } },
+                { text: 'Une bonne soirée', score: { } }
+              ],
+              gage: 'Fais quelque chose d\'amoureux aujourd\'hui. Pour quelqu\'un ou pour toi.', gageReason: 'L\'amour c\'est dans les PETITS gestes.' }
+        ];
+
+        const typeLabels = { 'fondement': '❤️ Fondements', 'dependance': '🔗 Dépendance', 'digital': '📱 Ère Digitale', 'relation': '💑 Relations', 'devperso': '🌱 Dev Perso', 'culture': '🎭 Culture', 'end': '🏆 Arrivée' };
+        
+        function init() { createStars(); loadProgress(); renderBoard(); updateProgress(); updateResultsButton(); }
+        
+        function createStars() {
+            const s = document.getElementById('stars');
+            for (let i = 0; i < 80; i++) {
+                const star = document.createElement('div');
+                star.className = 'star';
+                star.style.left = Math.random() * 100 + '%';
+                star.style.top = Math.random() * 100 + '%';
+                star.style.animationDelay = Math.random() * 3 + 's';
+                s.appendChild(star);
+            }
+        }
+        
+        function renderBoard() {
+            const board = document.getElementById('board');
+            board.innerHTML = '';
+            cells.forEach(cell => {
+                const div = document.createElement('div');
+                div.className = 'cell' + (visitedCells.has(cell.num) ? ' visited' : '') + (userAnswers[cell.num] !== undefined ? ' answered' : '') + (cell.num === currentPosition ? ' current' : '');
+                div.innerHTML = `<div class="cell-number">${cell.num}</div><div class="cell-icon">${cell.icon}</div><div class="cell-title">${cell.title}</div>`;
+                div.onclick = () => { if (visitedCells.has(cell.num)) showCellDetail(cell); };
+                board.appendChild(div);
+            });
+        }
+
+        function rollDice() {
+            const btn = document.getElementById('rollButton'), dice = document.getElementById('dice');
+            btn.disabled = true;
+            let rolls = 0;
+            const interval = setInterval(() => {
+                dice.textContent = ['⚀','⚁','⚂','⚃','⚄','⚅'][Math.floor(Math.random()*6)];
+                if (++rolls >= 10) {
+                    clearInterval(interval);
+                    const final = Math.floor(Math.random()*6)+1;
+                    dice.textContent = ['⚀','⚁','⚂','⚃','⚄','⚅'][final-1];
+                    if (soundEnabled) playSound();
+                    setTimeout(() => { movePlayer(final); btn.disabled = false; }, 500);
+                }
+            }, 100);
+        }
+
+        function movePlayer(steps) {
+            currentPosition = Math.min(currentPosition + steps, 63);
+            visitedCells.add(currentPosition);
+            renderBoard(); updateProgress(); updateResultsButton(); saveProgress();
+            showCellDetail(cells[currentPosition]);
+            if (currentPosition === 63) setTimeout(() => { celebrate(); setTimeout(showResults, 2000); }, 500);
+        }
+
+        function applyScore(score) {
+            if (!score) return;
+            for (const [k,v] of Object.entries(score)) {
+                if (['secure','anxieux','evitant','desorganise'].includes(k)) userProfile.attachement[k] += v;
+                else if (['mots','temps','cadeaux','services','toucher'].includes(k)) userProfile.langage[k] += v;
+                else if (userProfile[k] !== undefined) userProfile[k] = Math.max(0, Math.min(100, userProfile[k] + v));
+            }
+        }
+
+        function showCellDetail(cell) {
+            const saved = userAnswers[cell.num];
+            const opts = cell.options ? cell.options.map((o,i) => `<div class="question-option${saved===i?' selected':''}" onclick="selectAnswer(${cell.num},${i},this)" data-cell="${cell.num}">${o.text}</div>`).join('') : '';
+            document.getElementById('popupContent').innerHTML = `
+                <div class="popup-header"><div><div class="popup-title">${cell.icon} ${cell.title}</div><span class="popup-type type-${cell.type}">${typeLabels[cell.type]}</span></div><button class="close-btn" onclick="closePopup()">×</button></div>
+                <div class="popup-desc">${cell.desc}</div>
+                <div class="fun-fact"><div class="fun-fact-title">💡 LE SAVAIS-TU ?</div><div>${cell.funFact}</div></div>
+                <div class="question-section"><div class="question-title">❓ ET TOI ?</div><div style="margin-bottom:10px">${cell.question}</div><div class="question-options">${opts}</div></div>
+                <div class="gage-section"><div class="gage-title">🎭 GAGE ABSURDE</div><div class="gage-text">${cell.gage}</div><div class="gage-reason">↳ ${cell.gageReason}</div></div>`;
+            document.getElementById('popup').style.display = 'flex';
+        }
+
+        function selectAnswer(cellNum, optIdx, el) {
+            document.querySelectorAll(`[data-cell="${cellNum}"]`).forEach(o => o.classList.remove('selected'));
+            el.classList.add('selected');
+            if (userAnswers[cellNum] !== undefined) {
+                const prev = cells[cellNum].options[userAnswers[cellNum]];
+                if (prev?.score) { const rev = {}; for (const [k,v] of Object.entries(prev.score)) rev[k] = -v; applyScore(rev); }
+            }
+            const opt = cells[cellNum].options[optIdx];
+            if (opt?.score) applyScore(opt.score);
+            userAnswers[cellNum] = optIdx;
+            renderBoard(); updateProgress(); updateResultsButton(); saveProgress();
+        }
+
+        function closePopup() { document.getElementById('popup').style.display = 'none'; }
+
+        function updateResultsButton() {
+            const btn = document.getElementById('resultsBtn');
+            btn.classList.toggle('highlight', Object.keys(userAnswers).length >= 10);
+        }
+
+        function showResults() {
+            const count = Object.keys(userAnswers).length;
+            if (count < 5) { alert('Réponds à au moins 5 questions !'); return; }
+            
+            const att = userProfile.attachement, attT = att.secure+att.anxieux+att.evitant+att.desorganise;
+            const attP = { secure: attT>0?Math.round(att.secure/attT*100):25, anxieux: attT>0?Math.round(att.anxieux/attT*100):25, evitant: attT>0?Math.round(att.evitant/attT*100):25, desorganise: attT>0?Math.round(att.desorganise/attT*100):25 };
+            const domAtt = Object.entries(attP).sort((a,b)=>b[1]-a[1])[0];
+            
+            const lang = userProfile.langage, langT = lang.mots+lang.temps+lang.cadeaux+lang.services+lang.toucher;
+            const domLang = langT>0 ? Object.entries(lang).sort((a,b)=>b[1]-a[1])[0] : ['temps',0];
+
+            const attDesc = {
+                secure: { t: '😊 SÉCURE', d: 'T\'es à l\'aise en relation. Confiance, communication, intimité sans perdre ton indépendance. Bravo !', a: 'Continue et aide les autres à se sentir en confiance.' },
+                anxieux: { t: '😰 ANXIEUX', d: 'Tu cherches la réassurance. "Tu m\'aimes ? T\'es sûr ?" T\'es investi(e) mais inquiet(e). Ça se travaille !', a: 'Travaille ton autonomie. T\'es complet(e) seul(e).' },
+                evitant: { t: '🏃 ÉVITANT', d: 'Ton indépendance c\'est sacré. L\'intimité te fait un peu flipper. Tu gardes une distance "de sécurité".', a: 'Essaie de t\'ouvrir. L\'intimité peut être une force.' },
+                desorganise: { t: '🌀 DÉSORGANISÉ', d: '"Reviens ! Non va-t-en !" T\'oscilles entre besoin de proximité et peur de celle-ci.', a: 'Une thérapie peut vraiment t\'aider.' }
+            };
+            const langDesc = {
+                mots: { e: '💬', t: 'PAROLES', d: 'Tu te sens aimé(e) avec des mots doux.' },
+                temps: { e: '⏰', t: 'TEMPS', d: 'Tu te sens aimé(e) avec du vrai temps ensemble.' },
+                cadeaux: { e: '🎁', t: 'CADEAUX', d: 'Tu te sens aimé(e) avec des attentions.' },
+                services: { e: '🛠️', t: 'SERVICES', d: 'Tu te sens aimé(e) quand on fait des choses pour toi.' },
+                toucher: { e: '🤗', t: 'TOUCHER', d: 'Tu te sens aimé(e) avec le contact physique.' }
+            };
+
+            const attI = attDesc[domAtt[0]], langI = langDesc[domLang[0]] || langDesc.temps;
+            let advices = [];
+            if (userProfile.dependance > 60) advices.push({ i: '🔗', t: 'Attention à la dépendance', d: 'Tendance à la dépendance affective. Ça se travaille !', c: 'Cases 10-20' });
+            if (userProfile.estime < 40) advices.push({ i: '💪', t: 'Booste ton estime', d: 'Tu mérites de t\'aimer davantage.', c: 'Cases 43, 51' });
+            if (userProfile.redFlags < 40) advices.push({ i: '🚩', t: 'Ouvre l\'œil sur les red flags', d: 'Tu ignores les signaux d\'alerte.', c: 'Case 48' });
+            if (userProfile.communication < 40) advices.push({ i: '🗣️', t: 'Améliore ta communication', d: 'La communication c\'est LA clé.', c: 'Cases 32-33' });
+            if (!advices.length) advices.push({ i: '⭐', t: 'Beau travail !', d: 'Profil équilibré. Continue !', c: 'Rejoue dans quelques mois' });
+
+            document.getElementById('resultsContent').innerHTML = `
+                <div class="results-title">🪞 TON PROFIL AMOUREUX</div>
+                <div class="results-subtitle">Basé sur ${count} réponses</div>
+                <div class="profile-card">
+                    <div class="profile-section-title">🎭 Style d'attachement</div>
+                    <div style="font-size:1.2em;color:var(--neon-pink);margin-bottom:8px">${attI.t} (${domAtt[1]}%)</div>
+                    <p style="margin-bottom:10px;line-height:1.5">${attI.d}</p>
+                    <p style="color:var(--neon-green);font-style:italic">💡 ${attI.a}</p>
+                    <div style="margin-top:15px">
+                        <div class="trait-bar"><div class="trait-label"><span>😊 Sécure</span><span class="trait-value">${attP.secure}%</span></div><div class="trait-progress"><div class="trait-fill green" style="width:${attP.secure}%"></div></div></div>
+                        <div class="trait-bar"><div class="trait-label"><span>😰 Anxieux</span><span class="trait-value">${attP.anxieux}%</span></div><div class="trait-progress"><div class="trait-fill pink" style="width:${attP.anxieux}%"></div></div></div>
+                        <div class="trait-bar"><div class="trait-label"><span>🏃 Évitant</span><span class="trait-value">${attP.evitant}%</span></div><div class="trait-progress"><div class="trait-fill cyan" style="width:${attP.evitant}%"></div></div></div>
+                        <div class="trait-bar"><div class="trait-label"><span>🌀 Désorganisé</span><span class="trait-value">${attP.desorganise}%</span></div><div class="trait-progress"><div class="trait-fill purple" style="width:${attP.desorganise}%"></div></div></div>
+                    </div>
+                </div>
+                <div class="profile-card">
+                    <div class="profile-section-title">💕 Langage de l'amour</div>
+                    <div style="font-size:1.2em;color:var(--neon-cyan);margin-bottom:8px">${langI.e} ${langI.t}</div>
+                    <p>${langI.d}</p>
+                </div>
+                <div class="profile-card">
+                    <div class="profile-section-title">📊 Métriques</div>
+                    <div class="trait-bar"><div class="trait-label"><span>🔥 Passion/Stabilité</span><span class="trait-value">${userProfile.passionStabilite>50?'Passion':'Stabilité'}</span></div><div class="trait-progress"><div class="trait-fill pink" style="width:${userProfile.passionStabilite}%"></div></div></div>
+                    <div class="trait-bar"><div class="trait-label"><span>🦋 Autonomie</span><span class="trait-value">${100-userProfile.dependance}%</span></div><div class="trait-progress"><div class="trait-fill green" style="width:${100-userProfile.dependance}%"></div></div></div>
+                    <div class="trait-bar"><div class="trait-label"><span>💪 Estime</span><span class="trait-value">${userProfile.estime}%</span></div><div class="trait-progress"><div class="trait-fill gold" style="width:${userProfile.estime}%"></div></div></div>
+                    <div class="trait-bar"><div class="trait-label"><span>🚩 Red flags</span><span class="trait-value">${userProfile.redFlags}%</span></div><div class="trait-progress"><div class="trait-fill cyan" style="width:${userProfile.redFlags}%"></div></div></div>
+                    <div class="trait-bar"><div class="trait-label"><span>🗣️ Communication</span><span class="trait-value">${userProfile.communication}%</span></div><div class="trait-progress"><div class="trait-fill purple" style="width:${userProfile.communication}%"></div></div></div>
+                </div>
+                <div class="profile-card">
+                    <div class="profile-section-title">💡 Conseils perso</div>
+                    ${advices.map(a=>`<div class="advice-card"><div class="advice-title">${a.i} ${a.t}</div><div class="advice-text">${a.d}</div><div class="advice-case">📍 ${a.c}</div></div>`).join('')}
+                </div>
+                <div class="compatibility-section">
+                    <div class="compatibility-title">💕 TROUVE DES PROFILS COMPATIBLES</div>
+                    <p style="margin-bottom:15px">Ton profil est enregistré ! Trouve des personnes compatibles.</p>
+                    <button class="results-btn primary" onclick="alert('Bientôt disponible dans GameCrush ! 🚀')">🎠 Voir les profils compatibles</button>
+                </div>
+                <div class="results-actions">
+                    <button class="results-btn" onclick="closeResults()">← Retour</button>
+                    <button class="results-btn" onclick="shareResults()">📤 Partager</button>
+                </div>`;
+            document.getElementById('resultsOverlay').style.display = 'block';
+        }
+
+        function closeResults() { document.getElementById('resultsOverlay').style.display = 'none'; }
+        function shareResults() {
+            const txt = '🎲 J\'ai joué au Jeu de l\'Oie GameCrush et découvert mon profil amoureux ! 💕';
+            navigator.share ? navigator.share({text:txt}) : (navigator.clipboard.writeText(txt), alert('Texte copié !'));
+        }
+
+        function celebrate() {
+            for (let i=0; i<100; i++) setTimeout(() => {
+                const c = document.createElement('div');
+                c.style.cssText = `position:fixed;width:10px;height:10px;background:${['#FF00FF','#00FFFF','#39FF14','#FF6B9D','#FFD700'][Math.floor(Math.random()*5)]};left:${Math.random()*100}%;top:0;z-index:9999;pointer-events:none;border-radius:50%`;
+                document.body.appendChild(c);
+                c.animate([{transform:'translateY(0)',opacity:1},{transform:`translateY(100vh) rotate(${Math.random()*720}deg)`,opacity:0}],{duration:3000});
+                setTimeout(()=>c.remove(),3000);
+            }, i*30);
+        }
+
+        function updateProgress() {
+            const v = visitedCells.size-1, p = Math.round(v/63*100), a = Object.keys(userAnswers).length;
+            document.getElementById('progressText').textContent = `${v}/63 cases • Position : ${currentPosition}`;
+            document.getElementById('answersCount').textContent = `🎯 ${a} réponses`;
+            const f = document.getElementById('progressFill'); f.style.width = p+'%'; f.textContent = p+'%';
+        }
+
+        function saveProgress() { localStorage.setItem('gamecrushOieV3', JSON.stringify({position:currentPosition,visited:[...visitedCells],answers:userAnswers,profile:userProfile})); }
+        function loadProgress() { const s = localStorage.getItem('gamecrushOieV3'); if(s){const d=JSON.parse(s);currentPosition=d.position||0;visitedCells=new Set([...Array(64).keys()]);userAnswers=d.answers||{};userProfile=d.profile||userProfile;} }
+        function resetGame() { if(confirm('Recommencer ? Tout sera perdu.')){currentPosition=0;visitedCells=new Set([...Array(64).keys()]);userAnswers={};userProfile={attachement:{secure:0,anxieux:0,evitant:0,desorganise:0},dependance:50,langage:{mots:0,temps:0,cadeaux:0,services:0,toucher:0},passionStabilite:50,redFlags:50,estime:50,communication:50,digital:50};renderBoard();updateProgress();updateResultsButton();saveProgress();} }
+        function toggleSound() { soundEnabled=!soundEnabled; document.getElementById('soundToggle').textContent = soundEnabled?'🔊':'🔇'; }
+        function playSound() { try{const c=new(window.AudioContext||window.webkitAudioContext)(),o=c.createOscillator(),g=c.createGain();o.connect(g);g.connect(c.destination);o.frequency.value=600;g.gain.setValueAtTime(0.3,c.currentTime);g.gain.exponentialRampToValueAtTime(0.01,c.currentTime+0.1);o.start();o.stop(c.currentTime+0.1);}catch(e){} }
+        
+        document.getElementById('popup').onclick = e => { if(e.target.id==='popup') closePopup(); };
+        window.onload = init;
+    </script>
+</body>
+</html>

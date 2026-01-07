@@ -386,7 +386,7 @@ export default function CreateEventPage() {
                 <div>
                   <p className="font-bold text-[#FFFF00]">Je m'engage à réserver la table</p>
                   <p className="text-xs text-white/60 mt-1">
-                    Tu es responsable de la réservation. GameCrush ne gère pas les réservations.
+                    Tu es responsable de la réservation. Déli Délo ne gère pas les réservations.
                   </p>
                 </div>
               </div>

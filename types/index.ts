@@ -1,4 +1,4 @@
-// Types GameCrush
+// Types Déli Délo
 
 export interface User {
   id: string
@@ -226,4 +226,106 @@ export interface SignalAnalysis {
   emoji: string
   explanation: string
   suggestions?: string[]
+}
+
+// =============================================
+// TYPES: Jeux comme Lieux de Rencontre
+// =============================================
+
+export interface Game {
+  id: string
+  slug: string
+  name: string
+  description?: string
+  icon: string
+  image_url?: string
+  category: 'nostalgie' | 'culture' | 'fun' | 'defi'
+  is_active: boolean
+  created_at: string
+}
+
+export interface GameSession {
+  id: string
+  user_id: string
+  game_id: string
+  score: number
+  completion_time?: number
+  answers?: Record<string, unknown>
+  started_at: string
+  completed_at?: string
+  is_online: boolean
+}
+
+export interface GamePlayer {
+  user_id: string
+  game_id: string
+  best_score: number
+  best_rank?: number
+  times_played: number
+  last_played_at: string
+  // Données utilisateur jointes
+  user?: {
+    pseudo: string
+    avatar_url?: string
+    age?: number
+    city?: string
+  }
+  // Compatibilité calculée
+  compatibility?: number
+  is_ai_recommended?: boolean
+}
+
+export interface GameAlert {
+  id: string
+  user_id: string
+  game_id: string
+  alert_on_playing: boolean
+  alert_on_completion: boolean
+  alert_on_new_player: boolean
+  only_singles: boolean
+  min_compatibility: number
+  only_ai_recommended: boolean
+  max_distance?: number
+  frequency: 'instant' | 'daily' | 'weekly'
+  created_at: string
+  updated_at: string
+}
+
+export interface GameChallenge {
+  id: string
+  challenger_id: string
+  challenged_id: string
+  game_id: string
+  challenger_session_id?: string
+  challenged_session_id?: string
+  message?: string
+  status: 'pending' | 'accepted' | 'completed' | 'refused' | 'expired'
+  winner_id?: string
+  expires_at: string
+  created_at: string
+  completed_at?: string
+  // Données jointes
+  challenger?: {
+    pseudo: string
+    avatar_url?: string
+  }
+  challenged?: {
+    pseudo: string
+    avatar_url?: string
+  }
+  game?: Game
+}
+
+export interface OnlinePlayer extends GamePlayer {
+  started_at: string
+  is_online: true
+}
+
+export interface GameStats {
+  game_id: string
+  slug: string
+  name: string
+  total_players: number
+  online_players: number
+  last_activity?: string
 }

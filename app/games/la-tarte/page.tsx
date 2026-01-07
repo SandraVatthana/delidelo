@@ -3,867 +3,1068 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
+import { getSupabaseClient, demoMode } from '@/lib/supabase'
+import { moderateText, checkText, bdInsultSuggestions, targetEmojis as targetEmojisFromHook } from '@/hooks/useBDModeration'
 
 // Types
-type GameStep = 'intro' | 'game' | 'result'
-type Action = 'tarte' | 'bisou'
+type GameStep = 'accueil' | 'cible' | 'crime' | 'arme' | 'animation' | 'resultat'
+type TargetType = 'ex' | 'boss' | 'ami' | 'famille' | 'institution' | 'politique' | 'inconnu' | 'autre'
+type TarteType = 'cream' | 'lemon' | 'chocolate' | 'apple' | 'cake' | 'mud'
 
-interface Profile {
-  id: string
-  name: string
-  age: number
-  quote: string
-  description: string
-  redFlag?: string
-  category: 'classique' | 'ghost' | 'red_flag' | 'love_bomber' | 'cas_particulier' | 'bonus'
+interface TarteData {
+  targetType: TargetType | null
+  targetNickname: string
+  crimeDescription: string
+  tarteType: TarteType | null
 }
 
-interface Result {
-  profileId: string
-  action: Action
-  category: string
-}
-
-interface TarteProfile {
-  id: string
-  icon: string
-  name: string
-  description: string
-  crushIdeal: string
-}
-
-// Les profils à tarter
-const profiles: Profile[] = [
-  // Classiques du dating
-  {
-    id: 'kevin',
-    name: 'Kevin',
-    age: 29,
-    quote: '"Je suis pas comme les autres mecs"',
-    description: 'Spoiler : il est exactement comme les autres mecs.',
-    redFlag: 'Photo torse nu dans la salle de bain, miroir sale.',
-    category: 'classique'
-  },
-  {
-    id: 'lea',
-    name: 'Léaaaaaa',
-    age: 26,
-    quote: 'Répond "mdr" à tout. TOUT.',
-    description: '- "Mon père est mort" - "mdr"\n- "Je t\'aime" - "mdr"\n- "Tu veux qu\'on se voit ?" - "mdr"',
-    category: 'classique'
-  },
-  {
-    id: 'julien',
-    name: 'Julien',
-    age: 34,
-    quote: 'T\'envoie des vocaux de 4 minutes.',
-    description: 'Pour dire "ok".\n\nPersonne n\'a le temps, Julien. PERSONNE.',
-    category: 'classique'
-  },
-  {
-    id: 'theo',
-    name: 'Théo',
-    age: 28,
-    quote: 'Premier message : "T\'es quel signe ?"',
-    description: 'Signe que cette conversation va nulle part, Théo.',
-    category: 'classique'
-  },
-  {
-    id: 'marine',
-    name: 'Marine',
-    age: 31,
-    quote: '"J\'aime rire et voyager"',
-    description: 'WOW. Incroyable. Personne d\'autre n\'aime rire et voyager.\nTu es UNIQUE, Marine.',
-    category: 'classique'
-  },
-  {
-    id: 'maxime',
-    name: 'Maxime',
-    age: 27,
-    quote: '"Salut ça va ?" x3',
-    description: 'À 3 personnes différentes en même temps.\n\nL\'effort est palpable.',
-    category: 'classique'
-  },
-  // Ghosts
-  {
-    id: 'antoine',
-    name: 'Antoine',
-    age: 32,
-    quote: 'Conversation passionnante pendant 3 jours.',
-    description: 'Puis plus rien.\nIl est pas mort, il poste des stories.\n\nStatut : Schrödinger\'s boyfriend',
-    category: 'ghost'
-  },
-  {
-    id: 'chloe',
-    name: 'Chloé',
-    age: 29,
-    quote: '"Je suis pas prête pour une relation"',
-    description: 'En couple 2 semaines plus tard.\n\nElle était prête. Juste pas avec toi. Désolé.',
-    category: 'ghost'
-  },
-  {
-    id: 'romain',
-    name: 'Romain',
-    age: 35,
-    quote: 'Ghoste après un super date.',
-    description: 'Réapparaît 6 mois plus tard :\n"Hey ! Ça fait longtemps 😊"\n\nNon Romain. Non.',
-    category: 'ghost'
-  },
-  // Red Flags
-  {
-    id: 'bryan',
-    name: 'Bryan',
-    age: 30,
-    quote: '"Toutes mes ex sont des folles"',
-    description: 'Le point commun de toutes tes ex, c\'est toi, Bryan.\nRéfléchis.',
-    category: 'red_flag'
-  },
-  {
-    id: 'sophie',
-    name: 'Sophie',
-    age: 28,
-    quote: 'Te demande ton salaire au 2ème message.',
-    description: 'Pas pour l\'amour.\nPour le budget.',
-    category: 'red_flag'
-  },
-  {
-    id: 'nicolas',
-    name: 'Nicolas',
-    age: 33,
-    quote: '"T\'es belle. Pour une brune."',
-    description: 'Le compliment qui est en fait une insulte qui est en fait un red flag géant.',
-    category: 'red_flag'
-  },
-  {
-    id: 'lucas',
-    name: 'Lucas',
-    age: 31,
-    quote: 'Vérifie ton téléphone pendant le date.',
-    description: '"C\'est qui ce mec qui a liké ta photo ?"\n\nC\'est mon cousin, Lucas.\nEt c\'est notre PREMIER date.',
-    category: 'red_flag'
-  },
-  // Love Bombers
-  {
-    id: 'thomas',
-    name: 'Thomas',
-    age: 29,
-    quote: '"T\'es la femme de ma vie"',
-    description: 'On se parle depuis 24h.\n\nMême Netflix met plus de temps à te recommander une série, Thomas.',
-    category: 'love_bomber'
-  },
-  {
-    id: 'emma',
-    name: 'Emma',
-    age: 27,
-    quote: '"Je nous vois déjà mariés avec 3 enfants"',
-    description: 'On a matché il y a 2 heures.\n\nEmma. Respire.\nOn n\'a même pas échangé nos prénoms.',
-    category: 'love_bomber'
-  },
-  // Cas particuliers
-  {
-    id: 'alex',
-    name: 'Alex',
-    age: 30,
-    quote: 'Photo de profil : son chien. x3',
-    description: 'Bio : "Demande-moi des photos de mon chien"\n\nAlex, t\'es là pour matcher ou pour faire adopter ton chien ?',
-    category: 'cas_particulier'
-  },
-  {
-    id: 'camille',
-    name: 'Camille',
-    age: 26,
-    quote: '"Je suis pas sur cette app souvent"',
-    description: '"Ajoute-moi sur Insta @camille_xyz"\n\nTraduction : je veux des followers, pas un date.',
-    category: 'cas_particulier'
-  },
-  {
-    id: 'pierre',
-    name: 'Pierre',
-    age: 45,
-    quote: '"Âge : 29 ans"',
-    description: 'Clairement pas 29 ans.\n\nPierre, on a des yeux.\nEt des mathématiques.',
-    category: 'cas_particulier'
-  },
-  {
-    id: 'sarah',
-    name: 'Sarah',
-    age: 28,
-    quote: 'Toutes ses photos sont avec son ex.',
-    description: 'Coupé. Mais on voit quand même le bras.\n\nLe bras de la honte, Sarah.\nOn sait tous ce que c\'est.',
-    category: 'cas_particulier'
-  },
-  // Bonus
-  {
-    id: 'toi_meme',
-    name: 'Toi',
-    age: 0, // Will be replaced
-    quote: 'T\'as swipé à droite sur 47 personnes aujourd\'hui sans lire un seul profil.',
-    description: 'T\'as ghosté au moins 3 personnes "parce que t\'avais la flemme".\n\nT\'es pas mieux que les autres.\nEt c\'est OK.',
-    category: 'bonus'
-  },
+// Configuration des cibles
+const targetOptions: { type: TargetType; icon: string; label: string }[] = [
+  { type: 'ex', icon: '💔', label: 'Mon ex' },
+  { type: 'boss', icon: '💼', label: 'Mon boss / Collègue' },
+  { type: 'ami', icon: '🗡️', label: 'Ami(e) traître' },
+  { type: 'famille', icon: '👨‍👩‍👧', label: 'Ma famille' },
+  { type: 'institution', icon: '🏛️', label: 'Institution' },
+  { type: 'politique', icon: '🎭', label: 'Politique' },
+  { type: 'inconnu', icon: '😤', label: 'Inconnu(e)' },
+  { type: 'autre', icon: '✏️', label: 'Autre' },
 ]
 
-// Phrases après une tarte
-const tartePhrases = [
-  "C'était satisfaisant, non ?",
-  "Cette tarte était méritée.",
-  "Splat. Justice.",
-  "La crème de la justice.",
-  "Un petit tartage et ça repart.",
-  "Thérapie à 0€.",
-  "Tu te sens mieux ?",
-  "C'est ça le self-care.",
-  "Tarte-thérapie : approuvée.",
-  "Y'avait de la tension, là.",
-  "Libérateur.",
-  "On juge pas. On comprend.",
-  "Cette personne l'avait cherché.",
-  "La violence, c'est mal. Sauf en tarte.",
-  "Ça fait du bien, hein ?",
+// Configuration des tartes
+const tarteOptions: { type: TarteType; icon: string; name: string; description: string; color: string }[] = [
+  { type: 'cream', icon: '🍰', name: 'CREME', description: 'Classique', color: '#FFF8DC' },
+  { type: 'lemon', icon: '🍋', name: 'CITRON', description: 'Pour les aigris', color: '#FFF44F' },
+  { type: 'chocolate', icon: '🍫', name: 'CHOCOLAT', description: 'La lourde', color: '#8B4513' },
+  { type: 'apple', icon: '🥧', name: 'POMMES', description: 'Terroir', color: '#8FBC8F' },
+  { type: 'cake', icon: '🎂', name: 'GATEAU', description: 'Trahison majeure', color: '#FFB6C1' },
+  { type: 'mud', icon: '💩', name: 'BOUE', description: 'Le pire', color: '#8B7355' },
 ]
 
-// Phrases après un bisou
-const bisouPhrases = [
-  "Romantique !",
-  "Tu vois le bon en chacun.",
-  "Cœur sur toi.",
-  "L'amour vaincra.",
-  "Bisou stratégique ou sincère ?",
-  "Tu pardonnes facilement.",
-  "Aw, c'est mignon.",
-  "On y croit !",
+// Insultes BD
+const bdInsults = [
+  { text: 'Sac a crottes', icon: '💩' },
+  { text: 'Raclure de bidet', icon: '🚽' },
+  { text: 'Abruti des alpages', icon: '🐄' },
+  { text: '@#$%&!', icon: '🤬' },
+  { text: 'Patate cosmique', icon: '🥔' },
+  { text: 'Triple buse', icon: '🦅' },
 ]
 
-// Profils de résultat
-const tarteProfiles: TarteProfile[] = [
-  {
-    id: 'justicier_dating',
-    icon: '🎯',
-    name: 'Le Justicier du Dating',
-    description: 'Tu tolères pas les conneries. C\'est bien. Le monde a besoin de gens comme toi.',
-    crushIdeal: 'Quelqu\'un d\'honnête et direct. (Et qui répond pas "mdr" à tout.)'
-  },
-  {
-    id: 'chasseur_ghosts',
-    icon: '👻',
-    name: 'Le Chasseur de Ghosts',
-    description: 'Tu as été blessé(e) par le silence. On te comprend. Le ghost, c\'est nul.',
-    crushIdeal: 'Quelqu\'un qui répond. Juste... qui répond. C\'est pas compliqué pourtant.'
-  },
-  {
-    id: 'anti_love_bomber',
-    icon: '💣',
-    name: 'L\'Anti Love Bomber',
-    description: 'Tu aimes prendre ton temps. Pas de pression, pas de "je t\'aime" au bout de 2 jours.',
-    crushIdeal: 'Quelqu\'un qui sait que l\'amour, ça se construit. (Pas quelqu\'un qui a déjà prévu le prénom des enfants.)'
-  },
-  {
-    id: 'allergique_effort',
-    icon: '😴',
-    name: 'L\'Allergique à l\'Effort',
-    description: 'Tu veux de la substance. De la personnalité. Pas un copié-collé envoyé à 50 personnes.',
-    crushIdeal: 'Quelqu\'un qui a lu ton profil. (La barre est basse et pourtant.)'
-  },
-  {
-    id: 'bisounours_universel',
-    icon: '🧘',
-    name: 'Le Bisounours Universel',
-    description: 'Tu tartes personne ou presque. Soit t\'es très tolérant(e), soit t\'as peur du conflit. Ou alors t\'es juste quelqu\'un de bien.',
-    crushIdeal: 'N\'importe qui, apparemment.'
-  },
-  {
-    id: 'tarteur_fou',
-    icon: '🌪️',
-    name: 'Le Tarteur Fou',
-    description: 'Tu as tarté tout le monde. Même toi-même. C\'était cathartique ? On espère que ça va mieux maintenant.',
-    crushIdeal: 'Personne, apparemment. (Prends un chien ?)'
-  },
-  {
-    id: 'lucide',
-    icon: '🪞',
-    name: 'Le Lucide',
-    description: 'Tu as osé te tarter toi-même. C\'est de l\'auto-dérision. C\'est de la maturité. C\'est sexy, en fait.',
-    crushIdeal: 'Quelqu\'un qui sait rire de lui-même aussi.'
-  },
-]
-
-// Fonction de calcul du profil
-const getTarteProfile = (results: Result[]): TarteProfile => {
-  const tartes = results.filter(r => r.action === 'tarte')
-  const bisous = results.filter(r => r.action === 'bisou')
-
-  // Le Tarteur Fou
-  if (tartes.length >= results.length * 0.9) {
-    return tarteProfiles.find(p => p.id === 'tarteur_fou')!
-  }
-
-  // Le Bisounours Universel
-  if (bisous.length >= results.length * 0.8) {
-    return tarteProfiles.find(p => p.id === 'bisounours_universel')!
-  }
-
-  // Le Lucide (s'est tarté lui-même)
-  if (tartes.find(t => t.profileId === 'toi_meme')) {
-    return tarteProfiles.find(p => p.id === 'lucide')!
-  }
-
-  // Calculer la catégorie la plus tartée
-  const categoryCount: Record<string, number> = {}
-  tartes.forEach(t => {
-    categoryCount[t.category] = (categoryCount[t.category] || 0) + 1
-  })
-
-  const topCategory = Object.entries(categoryCount)
-    .sort((a, b) => b[1] - a[1])[0]?.[0]
-
-  switch (topCategory) {
-    case 'ghost':
-      return tarteProfiles.find(p => p.id === 'chasseur_ghosts')!
-    case 'love_bomber':
-      return tarteProfiles.find(p => p.id === 'anti_love_bomber')!
-    case 'red_flag':
-      return tarteProfiles.find(p => p.id === 'justicier_dating')!
-    case 'classique':
-      return tarteProfiles.find(p => p.id === 'allergique_effort')!
-    default:
-      return tarteProfiles.find(p => p.id === 'justicier_dating')!
-  }
-}
+// Emojis cibles
+const targetEmojis = ['🧦', '🐍', '🦨', '🐀', '🪳', '🐌', '👻', '🤡', '👹', '🦠', '🗑️', '🚽']
 
 export default function LaTartePage() {
   const router = useRouter()
-  const [step, setStep] = useState<GameStep>('intro')
-  const [currentProfileIndex, setCurrentProfileIndex] = useState(0)
-  const [results, setResults] = useState<Result[]>([])
-  const [showAnimation, setShowAnimation] = useState<'tarte' | 'bisou' | null>(null)
-  const [randomPhrase, setRandomPhrase] = useState('')
-  const [shuffledProfiles, setShuffledProfiles] = useState<Profile[]>([])
-  const [userAge, setUserAge] = useState(25)
+  const [step, setStep] = useState<GameStep>('accueil')
+  const [tarteData, setTarteData] = useState<TarteData>({
+    targetType: null,
+    targetNickname: '',
+    crimeDescription: '',
+    tarteType: null,
+  })
+  const [customTarget, setCustomTarget] = useState('')
+  const [selectedEmoji, setSelectedEmoji] = useState('🧦')
+  const [isPublishing, setIsPublishing] = useState(false)
+  const [publishSuccess, setPublishSuccess] = useState(false)
+  const [showModerationPopup, setShowModerationPopup] = useState(false)
+  const [moderationMessage, setModerationMessage] = useState<{ type: 'insult' | 'name' | 'blocked', original: string, suggestions: string[] } | null>(null)
+  const [score, setScore] = useState(1337)
+  const [isButtonHovered, setIsButtonHovered] = useState(false)
+  const [showFieldsError, setShowFieldsError] = useState(false)
 
-  // Mélanger les profils au démarrage
+  // Animation state
+  const [animationPhase, setAnimationPhase] = useState<'throw' | 'splat' | 'done'>('throw')
+
+  // Gerer l'animation SPLAT
   useEffect(() => {
-    const age = parseInt(localStorage.getItem('userAge') || '25')
-    setUserAge(age)
-
-    const shuffled = [...profiles]
-      .map(p => p.id === 'toi_meme' ? { ...p, age } : p)
-      .sort(() => Math.random() - 0.5)
-    setShuffledProfiles(shuffled)
-  }, [])
-
-  const currentProfile = shuffledProfiles[currentProfileIndex]
-  const isGameOver = currentProfileIndex >= shuffledProfiles.length
-
-  const handleAction = (action: Action) => {
-    if (!currentProfile) return
-
-    // Enregistrer le résultat
-    setResults(prev => [...prev, {
-      profileId: currentProfile.id,
-      action,
-      category: currentProfile.category
-    }])
-
-    // Afficher l'animation
-    setShowAnimation(action)
-    setRandomPhrase(
-      action === 'tarte'
-        ? tartePhrases[Math.floor(Math.random() * tartePhrases.length)]
-        : bisouPhrases[Math.floor(Math.random() * bisouPhrases.length)]
-    )
-
-    // Passer au profil suivant après l'animation
-    setTimeout(() => {
-      setShowAnimation(null)
-      if (currentProfileIndex + 1 >= shuffledProfiles.length) {
-        setStep('result')
-      } else {
-        setCurrentProfileIndex(prev => prev + 1)
+    if (step === 'animation') {
+      setAnimationPhase('throw')
+      const timer1 = setTimeout(() => setAnimationPhase('splat'), 800)
+      const timer2 = setTimeout(() => {
+        setAnimationPhase('done')
+        setScore(prev => prev + 100)
+        setStep('resultat')
+      }, 2000)
+      return () => {
+        clearTimeout(timer1)
+        clearTimeout(timer2)
       }
-    }, 1500)
-  }
-
-  const resultProfile = step === 'result' ? getTarteProfile(results) : null
-  const tartesCount = results.filter(r => r.action === 'tarte').length
-  const bisousCount = results.filter(r => r.action === 'bisou').length
-
-  // Stats par catégorie
-  const categoryStats = results.reduce((acc, r) => {
-    if (!acc[r.category]) {
-      acc[r.category] = { tartes: 0, bisous: 0 }
     }
-    if (r.action === 'tarte') acc[r.category].tartes++
-    else acc[r.category].bisous++
-    return acc
-  }, {} as Record<string, { tartes: number; bisous: number }>)
+  }, [step])
 
-  const categoryLabels: Record<string, string> = {
-    ghost: 'Les ghosteurs',
-    love_bomber: 'Les love bombers',
-    red_flag: 'Les red flags',
-    classique: 'Les classiques',
-    cas_particulier: 'Les cas particuliers',
-    bonus: 'Toi-même'
+  const handleTargetSelect = (type: TargetType) => {
+    setTarteData(prev => ({ ...prev, targetType: type }))
+    if (type !== 'autre') {
+      setStep('crime')
+    }
   }
+
+  const handleCrimeSubmit = () => {
+    if (!tarteData.targetNickname || !tarteData.crimeDescription) {
+      setShowFieldsError(true)
+      setTimeout(() => setShowFieldsError(false), 3000)
+      return
+    }
+
+    setShowFieldsError(false)
+    const moderationResult = moderateText(tarteData.crimeDescription)
+
+    if (moderationResult.hasBlockedWords) {
+      setModerationMessage({
+        type: 'blocked',
+        original: tarteData.crimeDescription,
+        suggestions: ['Ici c\'est CARTOON, pas TRIBUNAL !', 'Reformule sans violence, avec du fun BD.']
+      })
+      setShowModerationPopup(true)
+      return
+    }
+
+    if (moderationResult.hasPersonalInfo) {
+      setModerationMessage({
+        type: 'name',
+        original: moderationResult.foundPersonalInfo.join(', '),
+        suggestions: ['Utilise un surnom rigolo', 'Exemple: "Mon ex le 🐍"']
+      })
+      setShowModerationPopup(true)
+      return
+    }
+
+    if (moderationResult.hasInsults) {
+      setTarteData(prev => ({ ...prev, crimeDescription: moderationResult.cleanedText }))
+      setModerationMessage({
+        type: 'insult',
+        original: moderationResult.foundInsults.join(', '),
+        suggestions: ['Converti en style BD !']
+      })
+      setShowModerationPopup(true)
+      setTimeout(() => {
+        setShowModerationPopup(false)
+        setStep('arme')
+      }, 2000)
+      return
+    }
+
+    setStep('arme')
+  }
+
+  const handleTarteSelect = (type: TarteType) => {
+    setTarteData(prev => ({ ...prev, tarteType: type }))
+    setStep('animation')
+  }
+
+  const handlePublish = async (isPublic: boolean) => {
+    setIsPublishing(true)
+    try {
+      // Mode démo : sauvegarder dans localStorage
+      if (demoMode) {
+        const newTarte = {
+          id: `demo-${Date.now()}`,
+          user_id: 'demo-user',
+          target_type: tarteData.targetType,
+          target_nickname: tarteData.targetNickname,
+          crime_description: tarteData.crimeDescription,
+          tarte_type: tarteData.tarteType,
+          is_public: isPublic,
+          reactions_bienmerite: 0,
+          reactions_solidaire: 0,
+          reactions_mdr: 0,
+          reactions_pareil: 0,
+          is_tarte_du_jour: false,
+          created_at: new Date().toISOString(),
+          comments_count: 0,
+        }
+
+        // Récupérer les tartes existantes du localStorage
+        const existingTartes = JSON.parse(localStorage.getItem('demo_tartes') || '[]')
+        existingTartes.unshift(newTarte)
+        localStorage.setItem('demo_tartes', JSON.stringify(existingTartes))
+
+        console.log('🎮 Mode démo - Tarte sauvegardée:', newTarte)
+        await new Promise(resolve => setTimeout(resolve, 500))
+        setPublishSuccess(true)
+        setIsPublishing(false)
+        return
+      }
+
+      const supabase = getSupabaseClient()
+      if (!supabase) {
+        setPublishSuccess(true)
+        setIsPublishing(false)
+        return
+      }
+      const { data: { user } } = await supabase.auth.getUser()
+      if (user) {
+        await supabase.from('tartes').insert({
+          user_id: user.id,
+          target_type: tarteData.targetType,
+          target_nickname: tarteData.targetNickname,
+          crime_description: tarteData.crimeDescription,
+          tarte_type: tarteData.tarteType,
+          is_public: isPublic,
+        })
+      }
+      setPublishSuccess(true)
+    } catch (error) {
+      console.error('Erreur:', error)
+      if (demoMode) {
+        setPublishSuccess(true)
+      }
+    }
+    setIsPublishing(false)
+  }
+
+  const resetGame = () => {
+    setStep('accueil')
+    setTarteData({ targetType: null, targetNickname: '', crimeDescription: '', tarteType: null })
+    setPublishSuccess(false)
+    setSelectedEmoji('🧦')
+    setCustomTarget('')
+  }
+
+  const selectedTarte = tarteOptions.find(t => t.type === tarteData.tarteType)
 
   return (
-    <div className="min-h-screen flex flex-col">
-      {/* Background */}
-      <div className="bg-pattern" />
-
+    <div className="min-h-screen flex flex-col overflow-hidden relative">
+      {/* ==================== STYLES CSS ==================== */}
       <style jsx>{`
-        @keyframes tarteFly {
-          0% {
-            transform: translateX(-100px) rotate(0deg) scale(0.5);
-            opacity: 0;
-          }
-          30% {
-            opacity: 1;
-          }
-          70% {
-            transform: translateX(0) rotate(720deg) scale(1.2);
-          }
-          100% {
-            transform: translateX(0) rotate(720deg) scale(1);
-          }
+        /* === FONTS === */
+        .font-arcade { font-family: 'Press Start 2P', monospace; }
+        .font-title { font-family: 'Bangers', cursive; }
+
+        /* === BACKGROUND === */
+        .bg-arcade {
+          background: linear-gradient(180deg, #0a0015 0%, #1a0033 50%, #2d0052 100%);
         }
-        @keyframes splat {
-          0% {
-            transform: scale(1);
-          }
-          50% {
-            transform: scale(1.5);
-          }
-          100% {
-            transform: scale(1);
-            opacity: 0.8;
-          }
+
+        /* Grille neon */
+        .grid-pattern {
+          background-image:
+            linear-gradient(rgba(255, 0, 255, 0.03) 1px, transparent 1px),
+            linear-gradient(90deg, rgba(255, 0, 255, 0.03) 1px, transparent 1px),
+            linear-gradient(rgba(0, 255, 255, 0.02) 1px, transparent 1px),
+            linear-gradient(90deg, rgba(0, 255, 255, 0.02) 1px, transparent 1px);
+          background-size: 100px 100px, 100px 100px, 20px 20px, 20px 20px;
+          animation: gridScroll 20s linear infinite;
         }
-        @keyframes bisouFloat {
-          0% {
-            transform: scale(0) rotate(-20deg);
-            opacity: 0;
-          }
-          50% {
-            transform: scale(1.3) rotate(10deg);
-            opacity: 1;
-          }
-          100% {
-            transform: scale(1) rotate(0deg);
-          }
+
+        @keyframes gridScroll {
+          0% { background-position: 0 0, 0 0, 0 0, 0 0; }
+          100% { background-position: 100px 100px, 100px 100px, 20px 20px, 20px 20px; }
         }
-        @keyframes confetti {
-          0% {
-            transform: translateY(0) rotate(0deg);
-            opacity: 1;
-          }
-          100% {
-            transform: translateY(-100px) rotate(360deg);
-            opacity: 0;
-          }
+
+        /* Scanlines CRT */
+        .scanlines {
+          background: repeating-linear-gradient(
+            0deg,
+            rgba(0, 0, 0, 0.1) 0px,
+            rgba(0, 0, 0, 0.1) 1px,
+            transparent 1px,
+            transparent 2px
+          );
+          pointer-events: none;
         }
-        .tarte-animation {
-          animation: tarteFly 0.6s ease-out forwards;
+
+        /* Etoiles */
+        .stars {
+          background-image:
+            radial-gradient(1px 1px at 20px 30px, white, transparent),
+            radial-gradient(1px 1px at 40px 70px, rgba(255,255,255,0.8), transparent),
+            radial-gradient(1px 1px at 50px 160px, rgba(255,255,255,0.6), transparent),
+            radial-gradient(1px 1px at 90px 40px, white, transparent),
+            radial-gradient(1px 1px at 130px 80px, rgba(255,255,255,0.7), transparent),
+            radial-gradient(2px 2px at 160px 120px, rgba(255,0,255,0.5), transparent);
+          background-size: 200px 200px;
+          animation: twinkle 4s ease-in-out infinite;
         }
-        .splat-animation {
-          animation: splat 0.4s ease-out forwards;
+
+        @keyframes twinkle {
+          0%, 100% { opacity: 0.5; }
+          50% { opacity: 1; }
         }
-        .bisou-animation {
-          animation: bisouFloat 0.6s ease-out forwards;
-        }
-        .profile-card {
-          background: rgba(255, 255, 255, 0.05);
-          border: 3px solid rgba(255, 255, 255, 0.2);
+
+        /* === GLOW EFFECTS === */
+        .glow-pink { text-shadow: 0 0 10px #ff00ff, 0 0 20px #ff00ff, 0 0 40px #ff00ff; }
+        .glow-orange { text-shadow: 0 0 10px #ff6600, 0 0 20px #ff6600, 0 0 40px #ff6600; }
+        .glow-yellow { text-shadow: 0 0 10px #ffff00, 0 0 20px #ffff00, 0 0 40px #ffff00; }
+        .glow-cyan { text-shadow: 0 0 10px #00ffff, 0 0 20px #00ffff, 0 0 40px #00ffff; }
+        .glow-green { text-shadow: 0 0 10px #39ff14, 0 0 20px #39ff14, 0 0 40px #39ff14; }
+
+        .box-glow-pink { box-shadow: 0 0 20px rgba(255, 0, 255, 0.5), inset 0 0 20px rgba(255, 0, 255, 0.1); }
+        .box-glow-orange { box-shadow: 0 0 20px rgba(255, 102, 0, 0.5), inset 0 0 20px rgba(255, 102, 0, 0.1); }
+        .box-glow-green { box-shadow: 0 0 20px rgba(57, 255, 20, 0.5), inset 0 0 20px rgba(57, 255, 20, 0.1); }
+
+        /* === ARCADE CABINET FRAME === */
+        .arcade-frame {
+          background: linear-gradient(180deg, #1a1a2e 0%, #16213e 100%);
+          border: 4px solid #333;
           border-radius: 20px;
-          padding: 24px;
+          box-shadow:
+            inset 0 2px 0 rgba(255,255,255,0.1),
+            inset 0 -2px 0 rgba(0,0,0,0.3),
+            0 10px 40px rgba(0,0,0,0.5),
+            0 0 60px rgba(255, 0, 255, 0.2);
           position: relative;
-          overflow: hidden;
+          max-width: 480px;
+          padding: 32px;
         }
-        .action-btn {
-          padding: 20px 40px;
-          font-size: 1.2rem;
-          font-weight: bold;
-          border-radius: 50px;
-          transition: all 0.2s;
+
+        .arcade-frame::before {
+          content: '';
+          position: absolute;
+          top: 14px;
+          left: 14px;
+          right: 14px;
+          bottom: 14px;
+          border: 2px solid rgba(255, 0, 255, 0.3);
+          border-radius: 12px;
+          pointer-events: none;
+        }
+
+        /* === SECTION SPACING === */
+        .section {
           display: flex;
-          align-items: center;
-          gap: 10px;
+          flex-direction: column;
+          gap: 12px;
+          margin-bottom: 24px;
         }
-        .action-btn:hover {
-          transform: scale(1.05);
+
+        .section-title {
+          margin-bottom: 12px;
         }
-        .action-btn:active {
-          transform: scale(0.95);
+
+        .section-label {
+          margin-bottom: 8px;
         }
-        .btn-tarte {
-          background: linear-gradient(135deg, #FF6600 0%, #FF3131 100%);
-          color: white;
-          border: 3px solid #FF6600;
-          box-shadow: 0 0 20px rgba(255, 102, 0, 0.4);
+
+        /* Vis decoratives */
+        .screw {
+          width: 12px;
+          height: 12px;
+          background: linear-gradient(135deg, #666 0%, #333 100%);
+          border-radius: 50%;
+          position: absolute;
+          box-shadow: inset 0 1px 2px rgba(255,255,255,0.3), 0 1px 2px rgba(0,0,0,0.5);
         }
-        .btn-bisou {
-          background: linear-gradient(135deg, #FF00FF 0%, #FF69B4 100%);
-          color: white;
-          border: 3px solid #FF00FF;
-          box-shadow: 0 0 20px rgba(255, 0, 255, 0.4);
-        }
-        .cream-splat {
+        .screw::after {
+          content: '+';
           position: absolute;
           top: 50%;
           left: 50%;
           transform: translate(-50%, -50%);
-          font-size: 150px;
-          z-index: 10;
+          color: #222;
+          font-size: 8px;
+          font-weight: bold;
         }
-        .result-bar {
-          height: 12px;
-          background: rgba(255, 255, 255, 0.1);
-          border-radius: 6px;
-          overflow: hidden;
+
+        /* === ARCADE BUTTONS === */
+        .btn-arcade {
+          position: relative;
+          padding: 16px 32px;
+          font-family: 'Press Start 2P', monospace;
+          font-size: 12px;
+          text-transform: uppercase;
+          border: none;
+          border-radius: 8px;
+          cursor: pointer;
+          transition: all 0.1s ease;
+          transform-style: preserve-3d;
         }
-        .result-fill {
-          height: 100%;
+
+        .btn-arcade-primary {
+          background: linear-gradient(180deg, #39ff14 0%, #32cd32 50%, #228b22 100%);
+          color: #000;
+          box-shadow:
+            0 6px 0 #1a5c1a,
+            0 8px 10px rgba(0,0,0,0.4),
+            inset 0 2px 0 rgba(255,255,255,0.4),
+            0 0 30px rgba(57, 255, 20, 0.5);
+          text-shadow: 0 1px 0 rgba(255,255,255,0.3);
+        }
+
+        .btn-arcade-primary:hover {
+          transform: translateY(2px);
+          box-shadow:
+            0 4px 0 #1a5c1a,
+            0 6px 8px rgba(0,0,0,0.4),
+            inset 0 2px 0 rgba(255,255,255,0.4),
+            0 0 40px rgba(57, 255, 20, 0.7);
+        }
+
+        .btn-arcade-primary:active {
+          transform: translateY(6px);
+          box-shadow:
+            0 0 0 #1a5c1a,
+            0 2px 4px rgba(0,0,0,0.4),
+            inset 0 2px 0 rgba(255,255,255,0.2);
+        }
+
+        .btn-arcade-secondary {
+          background: linear-gradient(180deg, #ff00ff 0%, #cc00cc 50%, #990099 100%);
+          color: #fff;
+          box-shadow:
+            0 4px 0 #660066,
+            0 6px 8px rgba(0,0,0,0.4),
+            inset 0 2px 0 rgba(255,255,255,0.3),
+            0 0 20px rgba(255, 0, 255, 0.4);
+        }
+
+        .btn-arcade-secondary:hover {
+          transform: translateY(2px);
+          box-shadow:
+            0 2px 0 #660066,
+            0 4px 6px rgba(0,0,0,0.4),
+            inset 0 2px 0 rgba(255,255,255,0.3),
+            0 0 30px rgba(255, 0, 255, 0.6);
+        }
+
+        .btn-arcade-secondary:active {
+          transform: translateY(4px);
+          box-shadow: 0 0 0 #660066, inset 0 2px 0 rgba(255,255,255,0.2);
+        }
+
+        /* === BUTTON GROUPS === */
+        .btn-group {
+          display: flex;
+          flex-direction: column;
+          gap: 16px;
+          margin-top: 24px;
+        }
+
+        .btn-group-row {
+          display: flex;
+          gap: 16px;
+          margin-top: 24px;
+        }
+
+        /* === INPUT FIELDS === */
+        .input-field {
+          padding: 16px;
+          line-height: 1.4;
+          border-radius: 8px;
+          background: rgba(0, 0, 0, 0.5);
+          border: 2px solid rgba(255, 255, 255, 0.2);
+          color: white;
+          font-size: 14px;
+          transition: border-color 0.2s;
+        }
+
+        .input-field:focus {
+          border-color: #ff6600;
+          outline: none;
+        }
+
+        .input-field::placeholder {
+          color: rgba(255, 255, 255, 0.4);
+        }
+
+        textarea.input-field {
+          resize: none;
+        }
+
+        /* === ANIMATIONS === */
+        @keyframes float {
+          0%, 100% { transform: translateY(0); }
+          50% { transform: translateY(-10px); }
+        }
+
+        @keyframes pulse-neon {
+          0%, 100% { opacity: 1; filter: brightness(1); }
+          50% { opacity: 0.8; filter: brightness(1.2); }
+        }
+
+        @keyframes shake {
+          0%, 100% { transform: translateX(0) rotate(0); }
+          25% { transform: translateX(-5px) rotate(-2deg); }
+          75% { transform: translateX(5px) rotate(2deg); }
+        }
+
+        @keyframes flash {
+          0%, 100% { opacity: 1; }
+          50% { opacity: 0.5; }
+        }
+
+        @keyframes tarteFly {
+          0% { transform: translateX(-150px) translateY(80px) rotate(0deg) scale(0.3); opacity: 0; }
+          20% { opacity: 1; }
+          100% { transform: translateX(0) translateY(0) rotate(720deg) scale(1); }
+        }
+
+        @keyframes splat {
+          0% { transform: scale(0); opacity: 0; }
+          50% { transform: scale(1.5); opacity: 1; }
+          100% { transform: scale(1); opacity: 1; }
+        }
+
+        @keyframes particles {
+          0% { transform: translate(0, 0) scale(1); opacity: 1; }
+          100% { transform: translate(var(--tx), var(--ty)) scale(0); opacity: 0; }
+        }
+
+        @keyframes bounce-in {
+          0% { transform: scale(0); opacity: 0; }
+          50% { transform: scale(1.1); }
+          100% { transform: scale(1); opacity: 1; }
+        }
+
+        .animate-float { animation: float 3s ease-in-out infinite; }
+        .animate-pulse-neon { animation: pulse-neon 2s ease-in-out infinite; }
+        .animate-shake { animation: shake 0.3s ease-in-out; }
+        .animate-flash { animation: flash 0.2s ease-in-out 3; }
+        .tarte-fly { animation: tarteFly 0.8s ease-out forwards; }
+        .splat-effect { animation: splat 0.4s ease-out forwards; }
+        .particle { animation: particles 1s ease-out forwards; }
+        .bounce-in { animation: bounce-in 0.5s ease-out; }
+
+        /* === DECORATIVE SPRITES === */
+        .sprite {
+          position: absolute;
+          pointer-events: none;
+          opacity: 0.6;
+        }
+
+        /* === TARGET OPTIONS === */
+        .target-option {
+          background: rgba(0, 0, 0, 0.4);
+          border: 2px solid rgba(255, 0, 255, 0.3);
+          border-radius: 8px;
+          padding: 14px 16px;
+          cursor: pointer;
+          transition: all 0.2s;
+          line-height: 1.4;
+        }
+        .target-option:hover {
+          border-color: #ff00ff;
+          background: rgba(255, 0, 255, 0.1);
+          box-shadow: 0 0 15px rgba(255, 0, 255, 0.3);
+          transform: scale(1.02);
+        }
+        .target-option.selected {
+          border-color: #39ff14;
+          background: rgba(57, 255, 20, 0.15);
+          box-shadow: 0 0 20px rgba(57, 255, 20, 0.4);
+        }
+
+        /* === TARTE CARDS === */
+        .tarte-card {
+          background: rgba(0, 0, 0, 0.5);
+          border: 3px solid rgba(255, 102, 0, 0.3);
+          border-radius: 12px;
+          padding: 20px 16px;
+          cursor: pointer;
+          transition: all 0.2s;
+        }
+        .tarte-card:hover {
+          border-color: #ff6600;
+          transform: translateY(-4px) scale(1.05);
+          box-shadow: 0 10px 30px rgba(255, 102, 0, 0.4);
+        }
+
+        /* === INSULT CHIPS === */
+        .chips-group {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 12px;
+          margin: 16px 0;
+        }
+
+        .insult-chip {
+          background: rgba(255, 102, 0, 0.2);
+          border: 1px solid rgba(255, 102, 0, 0.5);
+          border-radius: 20px;
+          padding: 8px 16px;
+          font-size: 11px;
+          cursor: pointer;
+          transition: all 0.2s;
+          line-height: 1.4;
+        }
+        .insult-chip:hover {
+          background: rgba(255, 102, 0, 0.4);
+          transform: scale(1.05);
+          box-shadow: 0 0 10px rgba(255, 102, 0, 0.5);
+        }
+
+        /* === EMOJI BUTTONS === */
+        .emoji-btn {
+          width: 40px;
+          height: 40px;
+          border-radius: 8px;
+          border: 2px solid transparent;
+          background: rgba(0, 0, 0, 0.3);
+          cursor: pointer;
+          transition: all 0.2s;
+          font-size: 18px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+        }
+        .emoji-btn:hover { background: rgba(255, 255, 255, 0.1); transform: scale(1.1); }
+        .emoji-btn.selected {
+          border-color: #ff6600;
+          background: rgba(255, 102, 0, 0.3);
+          box-shadow: 0 0 10px rgba(255, 102, 0, 0.5);
+        }
+
+        /* === SCORE DISPLAY === */
+        .score-display {
+          font-family: 'Press Start 2P', monospace;
+          font-size: 10px;
+          color: #39ff14;
+          text-shadow: 0 0 10px #39ff14;
+          background: rgba(0, 0, 0, 0.6);
+          padding: 10px 16px;
           border-radius: 6px;
+          border: 1px solid rgba(57, 255, 20, 0.3);
+        }
+
+        /* === INSERT COIN === */
+        .insert-coin {
+          margin-top: 24px;
+          padding: 12px;
         }
       `}</style>
 
-      {/* Header */}
-      <header className="p-4">
-        <div className="h-1 bg-gradient-to-r from-[#FF6600] via-[#FF00FF] to-[#FFFF00] mb-4" />
-        <div className="flex items-center justify-between">
-          <Link href="/games" className="text-white/60 hover:text-white transition flex items-center gap-2">
-            <span>←</span>
-            <span className="text-sm">Retour</span>
-          </Link>
-          <div className="logo-90s text-xl">
-            <span className="text-2xl mr-2">🥧</span>
-            La Tarte
-          </div>
-          <div className="w-16" />
-        </div>
-      </header>
+      {/* ==================== BACKGROUND LAYERS ==================== */}
+      <div className="fixed inset-0 bg-arcade" />
+      <div className="fixed inset-0 grid-pattern" />
+      <div className="fixed inset-0 stars" />
+      <div className="fixed inset-0 scanlines" />
 
-      {/* Progress bar (game step only) */}
-      {step === 'game' && !isGameOver && (
-        <div className="px-5 mb-4">
-          <div className="flex items-center justify-between text-sm text-white/60 mb-2">
-            <span>Profil {currentProfileIndex + 1}/{shuffledProfiles.length}</span>
-            <span>🥧 {tartesCount} | 💋 {bisousCount}</span>
-          </div>
-          <div className="h-2 bg-white/10 rounded-full overflow-hidden">
-            <div
-              className="h-full bg-gradient-to-r from-[#FF6600] to-[#FF00FF] transition-all duration-300"
-              style={{ width: `${((currentProfileIndex + 1) / shuffledProfiles.length) * 100}%` }}
-            />
-          </div>
-        </div>
-      )}
+      {/* Sprites decoratifs */}
+      <div className="sprite text-4xl animate-float" style={{ top: '10%', right: '5%', animationDelay: '0s' }}>🥧</div>
+      <div className="sprite text-3xl animate-float" style={{ top: '30%', right: '8%', animationDelay: '1s' }}>🎯</div>
+      <div className="sprite text-2xl animate-float" style={{ top: '50%', right: '3%', animationDelay: '2s' }}>⭐</div>
+      <div className="sprite text-3xl animate-float" style={{ top: '70%', right: '10%', animationDelay: '0.5s' }}>💥</div>
+      <div className="sprite text-2xl animate-float" style={{ top: '20%', left: '3%', animationDelay: '1.5s' }}>✨</div>
+      <div className="sprite text-3xl animate-float" style={{ top: '60%', left: '5%', animationDelay: '2.5s' }}>🎮</div>
 
-      {/* Content */}
-      <main className="flex-1 px-5 pb-8 max-w-2xl mx-auto w-full flex flex-col">
+      {/* ==================== MAIN CONTAINER ==================== */}
+      <div className="relative z-10 flex-1 flex flex-col items-center justify-center p-4 min-h-screen">
 
-        {/* INTRO */}
-        {step === 'intro' && (
-          <div className="py-8 flex-1 flex flex-col justify-center">
-            <div className="text-center mb-8">
-              <div className="text-8xl mb-6 animate-pulse filter drop-shadow-[0_0_30px_#FF6600]">🥧</div>
-              <h1
-                className="text-4xl font-bold mb-4"
-                style={{ fontFamily: 'Bangers, cursive', color: '#FF6600', textShadow: '0 0 20px #FF6600, 3px 3px 0 #FFFF00' }}
-              >
-                LA TARTE
-              </h1>
-              <p className="text-white/80 text-lg mb-2">
-                Le jeu où tu peux <span className="text-[#FF6600] font-bold">ENFIN</span> te venger.
-              </p>
-              <p className="text-white/60">
-                Virtuellement. Légalement. Joyeusement.
-              </p>
+        {/* ARCADE CABINET */}
+        <div className="arcade-frame w-full relative">
+          {/* Vis */}
+          <div className="screw" style={{ top: '8px', left: '8px' }} />
+          <div className="screw" style={{ top: '8px', right: '8px' }} />
+          <div className="screw" style={{ bottom: '8px', left: '8px' }} />
+          <div className="screw" style={{ bottom: '8px', right: '8px' }} />
+
+          {/* Header avec score */}
+          <div className="flex items-center justify-between mb-8">
+            <Link href="/games" className="text-white/60 hover:text-white transition text-sm flex items-center gap-1">
+              <span>◀</span>
+              <span className="hidden sm:inline">RETOUR</span>
+            </Link>
+            <div className="score-display">
+              SCORE: {score.toString().padStart(6, '0')}
             </div>
+            <Link href="/games/la-tarte/mur" className="text-[#ff00ff] hover:text-white transition text-sm font-arcade" style={{ fontSize: '8px' }}>
+              LE MUR
+            </Link>
+          </div>
 
-            <div className="card-90s p-6 mb-8">
-              <p className="text-white/80 text-center mb-4">
-                On te montre des profils. Tu choisis :
-              </p>
-              <div className="flex justify-center gap-8">
-                <div className="text-center">
-                  <div className="text-4xl mb-2">💋</div>
-                  <div className="text-[#FF00FF] font-bold">EMBRASSER</div>
-                </div>
-                <div className="text-center text-white/30 text-2xl">ou</div>
-                <div className="text-center">
-                  <div className="text-4xl mb-2">🥧</div>
-                  <div className="text-[#FF6600] font-bold">TARTER</div>
-                </div>
+          {/* ==================== ETAPE 1: ACCUEIL ==================== */}
+          {step === 'accueil' && (
+            <div className="text-center bounce-in">
+              {/* Logo avec glow */}
+              <div className="text-7xl mb-6 animate-float animate-pulse-neon" style={{ filter: 'drop-shadow(0 0 30px #ff6600)' }}>
+                🥧
               </div>
-            </div>
 
-            <div
-              className="p-4 rounded-xl text-center mb-8"
-              style={{ background: 'rgba(255,255,255,0.03)', border: '1px dashed rgba(255,255,255,0.2)' }}
-            >
-              <p className="text-white/50 text-sm">
-                (Aucun vrai humain ne sera blessé.
-                <br />
-                Juste des égos virtuels.)
+              {/* Titre style arcade */}
+              <div className="section-title">
+                <h1 className="font-arcade text-lg sm:text-xl text-[#ff6600] glow-orange mb-2 leading-relaxed">
+                  LE JEU DE
+                </h1>
+                <h1 className="font-title text-5xl sm:text-6xl text-[#ffff00] glow-yellow mb-4" style={{ letterSpacing: '4px', WebkitTextStroke: '2px #ff6600' }}>
+                  LA TARTE
+                </h1>
+              </div>
+
+              {/* Sous-titre */}
+              <p className="font-arcade text-[8px] sm:text-[10px] text-[#00ffff] glow-cyan mb-8 leading-relaxed">
+                "LANCE TA FRUSTRATION"
               </p>
-            </div>
 
-            <button
-              onClick={() => setStep('game')}
-              className="btn-cta-primary w-full justify-center text-lg"
-              style={{ background: 'linear-gradient(135deg, #FF6600 0%, #FF3131 100%)' }}
-            >
-              🥧 C'est parti !
-            </button>
-          </div>
-        )}
+              {/* Description courte */}
+              <div className="bg-black/40 rounded-lg p-5 mb-8 border border-[#ff00ff]/30 box-glow-pink">
+                <p className="text-white/80 text-sm leading-relaxed mb-3">
+                  🎯 Qui mérite une tarte aujourd'hui ?
+                </p>
+                <p className="text-white/50 text-xs">
+                  Ton ex • Ton boss • Les impôts
+                </p>
+              </div>
 
-        {/* GAME */}
-        {step === 'game' && currentProfile && (
-          <div className="py-4 flex-1 flex flex-col">
-            {/* Profile Card */}
-            <div className="profile-card flex-1 flex flex-col justify-center relative">
-              {/* Animation overlay */}
-              {showAnimation && (
-                <div className="absolute inset-0 flex items-center justify-center z-20 bg-black/50 rounded-xl">
-                  {showAnimation === 'tarte' ? (
-                    <>
-                      <div className="tarte-animation text-9xl">🥧</div>
-                      <div className="absolute cream-splat splat-animation">💥</div>
-                    </>
-                  ) : (
-                    <div className="bisou-animation text-9xl">💋</div>
-                  )}
-                  <div className="absolute bottom-8 text-center">
-                    <p className="text-white text-lg font-bold" style={{ textShadow: '0 0 10px black' }}>
-                      {randomPhrase}
-                    </p>
-                  </div>
-                </div>
-              )}
+              {/* Boutons */}
+              <div className="btn-group">
+                <button
+                  onClick={() => setStep('cible')}
+                  onMouseEnter={() => setIsButtonHovered(true)}
+                  onMouseLeave={() => setIsButtonHovered(false)}
+                  className={`btn-arcade btn-arcade-primary w-full ${isButtonHovered ? 'animate-shake' : ''}`}
+                >
+                  <span className="mr-2">🎮</span> LANCER UNE TARTE
+                </button>
 
-              {/* Profile content */}
-              <div className={showAnimation ? 'opacity-30' : ''}>
-                <div className="text-center mb-6">
-                  <div className="text-6xl mb-4">👤</div>
-                  <h2
-                    className="text-2xl font-bold"
-                    style={{ fontFamily: 'Bangers, cursive', color: '#FFFF00', textShadow: '0 0 10px #FFFF00' }}
-                  >
-                    {currentProfile.name.toUpperCase()}, {currentProfile.id === 'toi_meme' ? userAge : currentProfile.age} ANS
-                  </h2>
-                </div>
+                <Link href="/games/la-tarte/mur" className="btn-arcade btn-arcade-secondary w-full inline-block text-center" style={{ fontSize: '10px', padding: '12px 24px' }}>
+                  👀 VOIR LE MUR
+                </Link>
+              </div>
 
-                <div className="text-center mb-6">
-                  <p className="text-[#FF00FF] text-xl font-bold mb-4 italic">
-                    {currentProfile.quote}
+              {/* Regle d'or */}
+              <div className="mt-8 pt-4 border-t border-white/10">
+                <p className="font-arcade text-[7px] text-[#ff00ff]/60">
+                  🎪 MODE CARTOON • ZERO HAINE
+                </p>
+                {demoMode && (
+                  <p className="font-arcade text-[6px] text-[#ffff00]/50 mt-2">
+                    ⚠️ MODE DÉMO - DONNÉES NON SAUVEGARDÉES
                   </p>
-                  <p className="text-white/80 whitespace-pre-line">
-                    {currentProfile.description}
-                  </p>
-                </div>
-
-                {currentProfile.redFlag && (
-                  <div
-                    className="p-3 rounded-lg text-center"
-                    style={{ background: 'rgba(255, 0, 0, 0.1)', border: '1px solid rgba(255, 0, 0, 0.3)' }}
-                  >
-                    <span className="text-[#FF3131] text-sm">
-                      🚩 Red flag : {currentProfile.redFlag}
-                    </span>
-                  </div>
                 )}
               </div>
             </div>
+          )}
 
-            {/* Action buttons */}
-            <div className="flex gap-4 mt-6">
-              <button
-                onClick={() => handleAction('bisou')}
-                disabled={showAnimation !== null}
-                className="action-btn btn-bisou flex-1 justify-center"
-              >
-                💋 Embrasser
-              </button>
-              <button
-                onClick={() => handleAction('tarte')}
-                disabled={showAnimation !== null}
-                className="action-btn btn-tarte flex-1 justify-center"
-              >
-                🥧 Tarter
-              </button>
-            </div>
-          </div>
-        )}
+          {/* ==================== ETAPE 2: CHOIX CIBLE ==================== */}
+          {step === 'cible' && (
+            <div className="bounce-in">
+              <div className="text-center mb-8">
+                <span className="text-4xl mb-3 block animate-float">🎯</span>
+                <h2 className="font-arcade text-xs text-[#ff6600] glow-orange">
+                  QUI MÉRITE UNE TARTE ?
+                </h2>
+              </div>
 
-        {/* RESULT */}
-        {step === 'result' && resultProfile && (
-          <div className="py-6">
-            <div className="text-center mb-6">
-              <p className="text-white/60 text-sm mb-2">🥧 RÉSULTATS DE TA SESSION TARTAGE</p>
-              <div className="flex justify-center gap-6 mb-4">
-                <div className="text-center">
-                  <div className="text-3xl">🥧</div>
-                  <div className="text-[#FF6600] font-bold text-2xl">{tartesCount}</div>
-                  <div className="text-white/50 text-xs">tartes</div>
-                </div>
-                <div className="text-center">
-                  <div className="text-3xl">💋</div>
-                  <div className="text-[#FF00FF] font-bold text-2xl">{bisousCount}</div>
-                  <div className="text-white/50 text-xs">bisous</div>
+              <div className="section">
+                <div className="grid grid-cols-2 gap-3">
+                  {targetOptions.map((option) => (
+                    <button
+                      key={option.type}
+                      onClick={() => handleTargetSelect(option.type)}
+                      className={`target-option flex items-center gap-3 ${tarteData.targetType === option.type ? 'selected' : ''}`}
+                    >
+                      <span className="text-xl">{option.icon}</span>
+                      <span className="text-white/80 text-xs">{option.label}</span>
+                    </button>
+                  ))}
                 </div>
               </div>
-            </div>
 
-            {/* Profile Card */}
-            <div
-              className="p-6 rounded-xl text-center mb-6"
-              style={{
-                background: 'rgba(255,255,255,0.05)',
-                border: '3px solid #FF6600',
-                boxShadow: '0 0 30px rgba(255, 102, 0, 0.3)'
-              }}
-            >
-              <div className="text-6xl mb-4">{resultProfile.icon}</div>
-              <h2
-                className="text-2xl font-bold mb-4"
-                style={{ fontFamily: 'Bangers, cursive', color: '#FF6600', textShadow: '0 0 15px #FF6600' }}
-              >
-                {resultProfile.name}
-              </h2>
-              <p className="text-white/80 mb-6">
-                {resultProfile.description}
+              {tarteData.targetType === 'autre' && (
+                <div className="section">
+                  <input
+                    type="text"
+                    value={customTarget}
+                    onChange={(e) => setCustomTarget(e.target.value)}
+                    placeholder="Qui veux-tu tarter ?"
+                    className="input-field w-full"
+                  />
+                  <button
+                    onClick={() => { if (customTarget) setStep('crime') }}
+                    disabled={!customTarget}
+                    className="btn-arcade btn-arcade-primary w-full disabled:opacity-50"
+                  >
+                    SUIVANT ▶
+                  </button>
+                </div>
+              )}
+
+              <p className="text-center text-white/30 text-[8px] mt-6 font-arcade">
+                ⚠ PAS DE VRAI NOM
               </p>
-              <div
-                className="p-4 rounded-lg"
-                style={{ background: 'rgba(255, 0, 255, 0.1)', border: '1px solid rgba(255, 0, 255, 0.3)' }}
-              >
-                <p className="text-[#FF00FF] text-sm font-bold mb-1">💕 Ton crush idéal :</p>
-                <p className="text-white/70 text-sm">{resultProfile.crushIdeal}</p>
+
+              <button onClick={() => setStep('accueil')} className="w-full mt-6 text-white/40 hover:text-white text-xs text-center py-2">
+                ◀ RETOUR
+              </button>
+            </div>
+          )}
+
+          {/* ==================== ETAPE 3: DESCRIPTION CRIME ==================== */}
+          {step === 'crime' && (
+            <div className="bounce-in">
+              <div className="text-center mb-8">
+                <span className="text-3xl mb-3 block">📝</span>
+                <h2 className="font-arcade text-[10px] text-[#ff6600] glow-orange">
+                  SON CRIME ?
+                </h2>
+              </div>
+
+              {/* Surnom */}
+              <div className="section">
+                <label className="text-white/50 text-xs block section-label">Surnom de ta cible :</label>
+                <input
+                  type="text"
+                  value={tarteData.targetNickname}
+                  onChange={(e) => setTarteData(prev => ({ ...prev, targetNickname: e.target.value }))}
+                  placeholder={`Clique sur un emoji ou tape un surnom`}
+                  className="input-field w-full"
+                />
+                <p className="text-white/30 text-[10px] mt-2 mb-2">Clique sur un emoji pour remplir automatiquement :</p>
+                <div className="flex flex-wrap gap-2">
+                  {targetEmojis.slice(0, 8).map((emoji) => (
+                    <button
+                      key={emoji}
+                      onClick={() => {
+                        setSelectedEmoji(emoji)
+                        // Auto-remplir le surnom avec le type de cible
+                        const nickname = `Ma cible le ${emoji}`
+                        setTarteData(prev => ({ ...prev, targetNickname: nickname }))
+                      }}
+                      className={`emoji-btn ${selectedEmoji === emoji ? 'selected' : ''}`}
+                    >
+                      {emoji}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Crime */}
+              <div className="section">
+                <label className="text-white/50 text-xs block section-label">Ce qu'il/elle a fait :</label>
+                <textarea
+                  value={tarteData.crimeDescription}
+                  onChange={(e) => setTarteData(prev => ({ ...prev, crimeDescription: e.target.value.slice(0, 280) }))}
+                  placeholder="Raconte..."
+                  rows={3}
+                  className="input-field w-full"
+                />
+                <div className="flex justify-between mt-2">
+                  <span className="text-white/30 text-[8px]">💡 STYLE BD !</span>
+                  <span className={`text-[10px] ${tarteData.crimeDescription.length >= 250 ? 'text-red-400' : 'text-white/30'}`}>
+                    {tarteData.crimeDescription.length}/280
+                  </span>
+                </div>
+              </div>
+
+              {/* Insultes BD */}
+              <div className="section">
+                <label className="text-white/40 text-[8px] block section-label font-arcade">INSULTES BD :</label>
+                <div className="chips-group">
+                  {bdInsults.map((insult) => (
+                    <button
+                      key={insult.text}
+                      onClick={() => setTarteData(prev => ({
+                        ...prev,
+                        crimeDescription: prev.crimeDescription + ` ${insult.text} ${insult.icon}`
+                      }))}
+                      className="insult-chip"
+                    >
+                      {insult.icon} {insult.text}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Message d'erreur */}
+              {showFieldsError && (
+                <div className="bg-red-500/20 border border-red-500/50 rounded-lg p-3 mb-4 text-center animate-shake">
+                  <p className="text-red-400 text-xs font-bold">
+                    ⚠️ Merci de remplir tous les champs !
+                  </p>
+                </div>
+              )}
+
+              <div className="btn-group-row">
+                <button onClick={() => setStep('cible')} className="btn-arcade btn-arcade-secondary flex-1" style={{ fontSize: '10px', padding: '14px' }}>
+                  ◀ RETOUR
+                </button>
+                <button
+                  onClick={handleCrimeSubmit}
+                  className="btn-arcade btn-arcade-primary flex-1"
+                >
+                  SUIVANT ▶
+                </button>
               </div>
             </div>
+          )}
 
-            {/* Category stats */}
-            <div className="card-90s p-5 mb-6">
-              <h3 className="text-[#FFFF00] font-bold mb-4" style={{ textShadow: '0 0 10px #FFFF00' }}>
-                📊 TES CIBLES PRÉFÉRÉES
-              </h3>
-              <div className="space-y-3">
-                {Object.entries(categoryStats)
-                  .sort((a, b) => b[1].tartes - a[1].tartes)
-                  .map(([category, stats]) => {
-                    const total = stats.tartes + stats.bisous
-                    const tartePct = (stats.tartes / total) * 100
-                    return (
-                      <div key={category}>
-                        <div className="flex items-center justify-between mb-1">
-                          <span className="text-white/80 text-sm">{categoryLabels[category] || category}</span>
-                          <span className="text-sm">
-                            {stats.tartes > 0 && <span className="text-[#FF6600]">{stats.tartes}🥧</span>}
-                            {stats.tartes > 0 && stats.bisous > 0 && ' '}
-                            {stats.bisous > 0 && <span className="text-[#FF00FF]">{stats.bisous}💋</span>}
-                          </span>
-                        </div>
-                        <div className="result-bar">
-                          <div
-                            className="result-fill"
-                            style={{
-                              width: `${tartePct}%`,
-                              background: tartePct > 50
-                                ? 'linear-gradient(90deg, #FF6600, #FF3131)'
-                                : 'linear-gradient(90deg, #FF00FF, #FF69B4)'
-                            }}
-                          />
-                        </div>
+          {/* ==================== ETAPE 4: CHOIX ARME ==================== */}
+          {step === 'arme' && (
+            <div className="bounce-in">
+              <div className="text-center mb-8">
+                <span className="text-3xl mb-3 block animate-float">🥧</span>
+                <h2 className="font-arcade text-[10px] text-[#ff6600] glow-orange">
+                  CHOISIS TON ARME
+                </h2>
+              </div>
+
+              <div className="section">
+                <div className="grid grid-cols-3 gap-3">
+                  {tarteOptions.map((tarte) => (
+                    <button
+                      key={tarte.type}
+                      onClick={() => handleTarteSelect(tarte.type)}
+                      className="tarte-card text-center"
+                    >
+                      <div className="text-4xl mb-3" style={{ filter: `drop-shadow(0 0 10px ${tarte.color})` }}>
+                        {tarte.icon}
                       </div>
-                    )
-                  })}
+                      <h3 className="text-white font-arcade text-[7px] mb-2">{tarte.name}</h3>
+                      <p className="text-white/40 text-[8px]">{tarte.description}</p>
+                    </button>
+                  ))}
+                </div>
               </div>
-            </div>
 
-            {/* What it says about you */}
-            <div
-              className="p-4 rounded-xl mb-6"
-              style={{ background: 'rgba(0, 255, 255, 0.1)', border: '2px solid rgba(0, 255, 255, 0.3)' }}
-            >
-              <p className="text-[#00FFFF] text-sm font-bold mb-2">💡 CE QUE ÇA DIT DE TOI</p>
-              <div className="text-white/70 text-sm">
-                <p>
-                  <span className="text-white font-bold">Tu valorises :</span>{' '}
-                  {resultProfile.id === 'chasseur_ghosts' && 'La communication, la présence'}
-                  {resultProfile.id === 'anti_love_bomber' && 'La patience, le respect du rythme'}
-                  {resultProfile.id === 'justicier_dating' && 'L\'honnêteté, le respect'}
-                  {resultProfile.id === 'allergique_effort' && 'L\'originalité, l\'effort'}
-                  {resultProfile.id === 'bisounours_universel' && 'La tolérance, l\'ouverture'}
-                  {resultProfile.id === 'tarteur_fou' && 'La justice... violente'}
-                  {resultProfile.id === 'lucide' && 'L\'auto-dérision, la lucidité'}
-                </p>
-                <p>
-                  <span className="text-white font-bold">Tu détestes :</span>{' '}
-                  {resultProfile.id === 'chasseur_ghosts' && 'Le silence, l\'abandon'}
-                  {resultProfile.id === 'anti_love_bomber' && 'La pression, les gens intenses'}
-                  {resultProfile.id === 'justicier_dating' && 'Les red flags, le bullshit'}
-                  {resultProfile.id === 'allergique_effort' && 'La paresse, les messages génériques'}
-                  {resultProfile.id === 'bisounours_universel' && 'Pas grand chose apparemment'}
-                  {resultProfile.id === 'tarteur_fou' && 'Tout le monde'}
-                  {resultProfile.id === 'lucide' && 'Les gens qui se prennent au sérieux'}
-                </p>
+              <button onClick={() => setStep('crime')} className="w-full mt-8 text-white/40 hover:text-white text-xs text-center py-2">
+                ◀ RETOUR
+              </button>
+            </div>
+          )}
+
+          {/* ==================== ETAPE 5: ANIMATION SPLAT ==================== */}
+          {step === 'animation' && (
+            <div className="flex flex-col items-center justify-center py-12">
+              <div className={`relative ${animationPhase === 'splat' ? 'animate-shake' : ''}`}>
+                <div className="text-8xl relative">
+                  🎯
+                  {animationPhase === 'throw' && (
+                    <span className="absolute inset-0 flex items-center justify-center text-6xl tarte-fly">
+                      {selectedTarte?.icon || '🥧'}
+                    </span>
+                  )}
+                  {(animationPhase === 'splat' || animationPhase === 'done') && (
+                    <span className="absolute inset-0 flex items-center justify-center text-8xl splat-effect">
+                      💥
+                    </span>
+                  )}
+                </div>
+
+                {(animationPhase === 'splat' || animationPhase === 'done') && (
+                  <div className="text-center mt-4 splat-effect">
+                    <h2 className="font-title text-5xl text-[#ffff00] glow-yellow" style={{ WebkitTextStroke: '2px #ff6600' }}>
+                      SPLATTTT !
+                    </h2>
+                    <p className="font-arcade text-[8px] text-[#39ff14] glow-green mt-2">
+                      +100 POINTS
+                    </p>
+                  </div>
+                )}
               </div>
+
+              {animationPhase === 'splat' && (
+                <div className="absolute inset-0 pointer-events-none overflow-hidden">
+                  {[...Array(12)].map((_, i) => (
+                    <div
+                      key={i}
+                      className="absolute particle text-2xl"
+                      style={{
+                        left: '50%',
+                        top: '40%',
+                        '--tx': `${(Math.random() - 0.5) * 200}px`,
+                        '--ty': `${(Math.random() - 0.5) * 200}px`,
+                      } as React.CSSProperties}
+                    >
+                      {['💦', '✨', selectedTarte?.icon || '🥧'][i % 3]}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* ==================== ETAPE 6: RESULTAT ==================== */}
+          {step === 'resultat' && (
+            <div className="bounce-in">
+              <div className="text-center mb-8">
+                <span className="text-4xl mb-3 block animate-pulse-neon">🎉</span>
+                <h2 className="font-arcade text-xs text-[#39ff14] glow-green">
+                  TARTE ENVOYÉE !
+                </h2>
+              </div>
+
+              {/* Resume */}
+              <div className="section">
+                <div className="bg-black/40 rounded-lg p-5 border border-[#ff6600]/30">
+                  <div className="space-y-3 text-sm">
+                    <p><span className="text-white/50">🎯 Cible:</span> <span className="text-[#ff6600]">{tarteData.targetNickname}</span></p>
+                    <p><span className="text-white/50">📝 Crime:</span> <span className="text-white/80">{tarteData.crimeDescription.slice(0, 80)}...</span></p>
+                    <p><span className="text-white/50">🥧 Arme:</span> <span className="text-white">{selectedTarte?.icon} {selectedTarte?.name}</span></p>
+                  </div>
+                </div>
+              </div>
+
+              {!publishSuccess ? (
+                <div className="btn-group">
+                  <button
+                    onClick={() => handlePublish(true)}
+                    disabled={isPublishing}
+                    className="btn-arcade btn-arcade-primary w-full"
+                  >
+                    {isPublishing ? '⏳...' : '📤 PUBLIER'}
+                  </button>
+                  <button
+                    onClick={() => handlePublish(false)}
+                    disabled={isPublishing}
+                    className="btn-arcade btn-arcade-secondary w-full" style={{ fontSize: '10px' }}
+                  >
+                    🔒 GARDER PRIVÉ
+                  </button>
+                </div>
+              ) : (
+                <div className="btn-group">
+                  <div className="bg-[#39ff14]/10 border border-[#39ff14]/30 rounded-lg p-4 text-center">
+                    <span className="text-2xl">✅</span>
+                    <p className="text-[#39ff14] text-sm font-bold mt-2">Publié !</p>
+                  </div>
+                  <Link href="/games/la-tarte/mur" className="btn-arcade btn-arcade-primary w-full inline-block text-center">
+                    👀 VOIR LE MUR
+                  </Link>
+                </div>
+              )}
+
+              <button onClick={resetGame} className="w-full mt-8 text-white/40 hover:text-white text-xs text-center py-2">
+                🥧 REJOUER
+              </button>
+            </div>
+          )}
+
+        </div>
+
+        {/* INSERT COIN */}
+        <div className="insert-coin font-arcade text-[8px] text-[#ff00ff]/50 animate-pulse">
+          INSERT COIN TO CONTINUE
+        </div>
+      </div>
+
+      {/* ==================== POPUP MODERATION ==================== */}
+      {showModerationPopup && moderationMessage && (
+        <div className="fixed inset-0 bg-black/90 flex items-center justify-center z-50 p-4" onClick={() => moderationMessage.type !== 'insult' && setShowModerationPopup(false)}>
+          <div className="arcade-frame p-6 max-w-sm w-full bounce-in" style={{
+            borderColor: moderationMessage.type === 'blocked' ? '#ff3131' : moderationMessage.type === 'name' ? '#ffff00' : '#39ff14'
+          }} onClick={(e) => e.stopPropagation()}>
+
+            <div className="text-center mb-4">
+              <span className="text-5xl block mb-2">
+                {moderationMessage.type === 'blocked' ? '🚨' : moderationMessage.type === 'name' ? '⚠️' : '🤖'}
+              </span>
+              <h3 className="font-arcade text-[10px]" style={{
+                color: moderationMessage.type === 'blocked' ? '#ff3131' : moderationMessage.type === 'name' ? '#ffff00' : '#39ff14'
+              }}>
+                {moderationMessage.type === 'blocked' ? 'STOP ! MODE BD !' : moderationMessage.type === 'name' ? 'ATTENTION !' : 'CONVERTI EN BD !'}
+              </h3>
             </div>
 
-            {/* Actions */}
-            <div className="space-y-3">
-              <button
-                onClick={() => {
-                  if (navigator.share) {
-                    navigator.share({
-                      title: `Je suis ${resultProfile.name} sur GameCrush !`,
-                      text: `J'ai tarté ${tartesCount} personnes et embrassé ${bisousCount}. ${resultProfile.description}`,
-                      url: window.location.href
-                    })
-                  }
-                }}
-                className="btn-cta-primary w-full justify-center"
-                style={{ background: 'linear-gradient(135deg, #00FFFF 0%, #00B4D8 100%)' }}
-              >
-                🔗 Partager mes résultats
-              </button>
-              <button
-                onClick={() => {
-                  setStep('intro')
-                  setCurrentProfileIndex(0)
-                  setResults([])
-                  const shuffled = [...profiles]
-                    .map(p => p.id === 'toi_meme' ? { ...p, age: userAge } : p)
-                    .sort(() => Math.random() - 0.5)
-                  setShuffledProfiles(shuffled)
-                }}
-                className="btn-cta-primary w-full justify-center"
-                style={{ background: 'linear-gradient(135deg, #FF6600 0%, #FF3131 100%)' }}
-              >
-                🎮 Rejouer
-              </button>
-              <button
-                onClick={() => router.push('/games')}
-                className="w-full text-center text-white/50 text-sm py-3 hover:text-white/80 transition"
-              >
-                ← Retour aux jeux
-              </button>
+            <div className="space-y-2 mb-4">
+              {moderationMessage.suggestions.map((s, i) => (
+                <p key={i} className="text-white/70 text-xs text-center">💡 {s}</p>
+              ))}
             </div>
 
-            {/* Disclaimer */}
-            <div className="mt-8 p-3 text-center border-t border-white/10">
-              <p className="text-white/30 text-xs">
-                🥧 La Tarte est un jeu humoristique et cathartique.
-                <br />
-                Les profils sont fictifs. Si tu te reconnais, c'est peut-être un signe.
+            {moderationMessage.type !== 'insult' && (
+              <button onClick={() => setShowModerationPopup(false)} className="btn-arcade btn-arcade-primary w-full">
+                JE MODIFIE ✍️
+              </button>
+            )}
+
+            {moderationMessage.type === 'insult' && (
+              <p className="text-center text-white/40 text-[8px] font-arcade animate-pulse">
+                CONTINUATION...
               </p>
-            </div>
+            )}
           </div>
-        )}
-
-      </main>
+        </div>
+      )}
     </div>
   )
 }

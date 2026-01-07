@@ -411,7 +411,7 @@ export default function RefaisLaFrancePage() {
       </header>
 
       {/* Content */}
-      <main className="flex-1 px-5 pb-8 max-w-2xl mx-auto w-full">
+      <main className="flex-1 pb-8 w-full" style={{ maxWidth: '800px', margin: '0 auto', padding: '0 1.5rem 2rem' }}>
 
         {/* INTRO */}
         {step === 'intro' && (
@@ -466,7 +466,7 @@ export default function RefaisLaFrancePage() {
                 </li>
                 <li className="flex items-start gap-3">
                   <span className="text-2xl">💕</span>
-                  <span>Compare avec ton crush et débattez !</span>
+                  <span>Compare avec tes potes et débattez !</span>
                 </li>
               </ul>
             </div>
@@ -680,7 +680,7 @@ export default function RefaisLaFrancePage() {
                   // Simuler un partage
                   if (navigator.share) {
                     navigator.share({
-                      title: `Je suis ${profileResult.name} sur GameCrush !`,
+                      title: `Je suis ${profileResult.name} sur Déli Délo !`,
                       text: profileResult.description,
                       url: window.location.href
                     })
@@ -700,7 +700,7 @@ export default function RefaisLaFrancePage() {
                 className="btn-cta-primary w-full justify-center"
                 style={{ background: 'linear-gradient(135deg, #FF00FF 0%, #FF6B9D 100%)' }}
               >
-                ⚔️ Comparer avec un match
+                ⚔️ Comparer avec un pote
               </button>
               <button
                 onClick={() => {
@@ -723,7 +723,7 @@ export default function RefaisLaFrancePage() {
             {/* Disclaimer */}
             <div className="mt-8 p-3 text-center border-t border-white/10">
               <p className="text-white/30 text-xs">
-                ⚠️ GameCrush n'a aucune affiliation politique.
+                ⚠️ Déli Délo n'a aucune affiliation politique.
                 <br />
                 Si ce résultat te met en colère, c'est peut-être le moment d'en discuter avec ton match.
               </p>
@@ -938,7 +938,7 @@ export default function RefaisLaFrancePage() {
                 className="btn-cta-primary w-full justify-center"
                 style={{ background: 'linear-gradient(135deg, #00FFFF 0%, #00B4D8 100%)' }}
               >
-                🔄 Comparer avec un autre match
+                🔄 Comparer avec un autre pote
               </button>
               <button
                 onClick={() => setStep('result')}

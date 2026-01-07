@@ -11,7 +11,7 @@ export default function InviterAmi() {
   const [sent, setSent] = useState(false)
 
   // Lien d'invitation unique (mock)
-  const inviteLink = 'https://gamecrush.app/join/abc123'
+  const inviteLink = 'https://delidelo.app/join/abc123'
 
   const handleCopy = async () => {
     await navigator.clipboard.writeText(inviteLink)
@@ -28,12 +28,12 @@ export default function InviterAmi() {
   }
 
   const shareWhatsApp = () => {
-    const text = encodeURIComponent(`Hey ! Rejoins GameCrush et laisse-moi jouer les Cupidons pour toi ! 🏹💘 ${inviteLink}`)
+    const text = encodeURIComponent(`Hey ! Rejoins Déli Délo et laisse-moi jouer les Cupidons pour toi ! 🏹💘 ${inviteLink}`)
     window.open(`https://wa.me/?text=${text}`, '_blank')
   }
 
   const shareSMS = () => {
-    const text = encodeURIComponent(`Hey ! Rejoins GameCrush pour qu'on puisse chasser des coeurs ensemble ! 🏹 ${inviteLink}`)
+    const text = encodeURIComponent(`Hey ! Rejoins Déli Délo pour qu'on puisse chasser des coeurs ensemble ! 🏹 ${inviteLink}`)
     window.open(`sms:?body=${text}`, '_blank')
   }
 

@@ -3,36 +3,36 @@ import "./globals.css";
 import { UserProvider } from "./contexts/UserContext";
 
 export const metadata: Metadata = {
-  title: "GameCrush - Joue. Révèle-toi. Connecte.",
+  title: "Déli Délo - Joue. Révèle-toi. Connecte.",
   description: "L'app dating où on joue AVANT de se parler. Les red flags sortent dans le jeu, pas dans tes DM. Fini les 'Salut ça va ?'",
   keywords: ["rencontres", "dating", "jeux", "gamification", "amour", "amitié", "90s", "arcade"],
-  authors: [{ name: "GameCrush" }],
+  authors: [{ name: "Déli Délo" }],
   manifest: "/manifest.json",
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",
-    title: "GameCrush",
+    title: "Déli Délo",
     startupImage: "/icons/icon-512x512.png",
   },
   openGraph: {
     type: "website",
     locale: "fr_FR",
-    url: "https://gamecrush.app",
-    siteName: "GameCrush",
-    title: "GameCrush - Joue. Révèle-toi. Connecte.",
+    url: "https://delidelo.app",
+    siteName: "Déli Délo",
+    title: "Déli Délo - Joue. Révèle-toi. Connecte.",
     description: "L'app dating où on joue AVANT de se parler",
     images: [
       {
         url: "/og-image.png",
         width: 1200,
         height: 630,
-        alt: "GameCrush",
+        alt: "Déli Délo",
       },
     ],
   },
   twitter: {
     card: "summary_large_image",
-    title: "GameCrush - Joue. Révèle-toi. Connecte.",
+    title: "Déli Délo - Joue. Révèle-toi. Connecte.",
     description: "L'app dating où on joue AVANT de se parler",
     images: ["/og-image.png"],
   },
@@ -54,11 +54,11 @@ export default function RootLayout({
   return (
     <html lang="fr">
       <head>
-        <link rel="icon" href="/favicon.ico" />
+        <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
         <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
-        <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+        <link href="https://fonts.googleapis.com/css2?family=Bangers&family=Nunito:wght@400;500;600;700;800&family=Press+Start+2P&display=swap" rel="stylesheet" />
       </head>
       <body className="antialiased">
         <UserProvider>

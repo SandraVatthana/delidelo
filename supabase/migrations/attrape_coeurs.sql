@@ -1,5 +1,5 @@
 -- =============================================
--- ATTRAPE-CŒURS - Tables pour GameCrush
+-- ATTRAPE-CŒURS - Tables pour Aladelidelo
 -- =============================================
 
 -- Table des relations Cupidon (qui peut chasser pour qui)

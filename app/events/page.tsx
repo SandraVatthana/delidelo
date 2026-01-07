@@ -199,7 +199,7 @@ export default function EventsPage() {
           <div className="max-w-5xl mx-auto flex items-center justify-between mb-3">
             <Link href="/" className="logo-90s text-xl">
               <span className="animate-spin inline-block text-lg">🎠</span>
-              GameCrush
+              Déli Délo
             </Link>
 
             <button className="relative p-2 text-white/60 hover:text-[#FFFF00] transition">
@@ -244,7 +244,7 @@ export default function EventsPage() {
       </header>
 
       {/* Contenu principal */}
-      <main className="px-6 py-8" style={{ maxWidth: '600px', margin: '0 auto' }}>
+      <main className="px-6 py-8" style={{ maxWidth: '800px', margin: '0 auto' }}>
         {!selectedEvent ? (
           <>
             {/* Bannière Image */}

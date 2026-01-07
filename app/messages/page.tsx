@@ -3,6 +3,16 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
+import { useUser } from '../contexts/UserContext'
+
+// Types de bonbons
+const bonbonTypes = [
+  { id: 'carambar', emoji: '🍬', name: 'Carambar', message: 'Un petit bonbon pour toi !', cost: 1 },
+  { id: 'sucette', emoji: '🍭', name: 'Sucette', message: 'Une sucette pour égayer ta journée !', cost: 1 },
+  { id: 'bonbon-coeur', emoji: '💗', name: 'Bonbon Coeur', message: 'Tu me fais craquer...', cost: 2 },
+  { id: 'fraise-tagada', emoji: '🍓', name: 'Fraise Tagada', message: 'Aussi sweet que toi !', cost: 2 },
+  { id: 'chamallow', emoji: '☁️', name: 'Chamallow', message: 'Doux comme un nuage !', cost: 3 },
+]
 
 // Conversations simulées
 const mockConversations = [
@@ -48,11 +58,39 @@ const mockMessages = [
 
 export default function MessagesPage() {
   const router = useRouter()
+  const { user: userData, setUser } = useUser()
   const [activeConversation, setActiveConversation] = useState<string | null>(null)
   const [newMessage, setNewMessage] = useState('')
   const [messages, setMessages] = useState(mockMessages)
+  const [showBonbonModal, setShowBonbonModal] = useState(false)
+  const [bonbonSent, setBonbonSent] = useState<string | null>(null)
 
   const activeChat = mockConversations.find(c => c.id === activeConversation)
+
+  const sendBonbon = (bonbon: typeof bonbonTypes[0]) => {
+    if (userData.bonbons < bonbon.cost) return
+
+    // Déduire le coût
+    setUser({ bonbons: userData.bonbons - bonbon.cost })
+
+    // Ajouter le message bonbon
+    setMessages(prev => [
+      ...prev,
+      {
+        id: Date.now(),
+        from: 'me',
+        text: `${bonbon.emoji} ${bonbon.message}`,
+        time: new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }),
+        isBonbon: true,
+      },
+    ])
+
+    setBonbonSent(bonbon.emoji)
+    setShowBonbonModal(false)
+
+    // Reset animation
+    setTimeout(() => setBonbonSent(null), 2000)
+  }
 
   const sendMessage = () => {
     if (!newMessage.trim()) return
@@ -148,7 +186,7 @@ export default function MessagesPage() {
               <>
                 <Link href="/dashboard" className="logo-90s text-xl">
                   <span className="animate-spin inline-block text-lg">🎠</span>
-                  GameCrush
+                  Déli Délo
                 </Link>
                 <span className="text-[#FF00FF] font-bold text-xl" style={{ textShadow: '0 0 10px #FF00FF' }}>
                   💬 Messages
@@ -196,7 +234,7 @@ export default function MessagesPage() {
       </header>
 
       {/* Contenu principal */}
-      <main className="px-6 py-8" style={{ maxWidth: '600px', margin: '0 auto' }}>
+      <main className="px-6 py-8" style={{ maxWidth: '800px', margin: '0 auto' }}>
         {!activeConversation ? (
           <>
             {/* Titre centré */}
@@ -326,6 +364,18 @@ export default function MessagesPage() {
 
             {/* Zone de saisie */}
             <div className="flex gap-3">
+              <button
+                onClick={() => setShowBonbonModal(true)}
+                className="px-4 py-2 rounded-lg font-bold transition hover:scale-105"
+                style={{
+                  background: 'linear-gradient(135deg, #FF00FF, #FF6B9D)',
+                  color: 'white',
+                  boxShadow: '0 0 15px rgba(255, 0, 255, 0.4)',
+                }}
+                title="Envoyer un bonbon"
+              >
+                🍬
+              </button>
               <input
                 type="text"
                 value={newMessage}
@@ -343,6 +393,14 @@ export default function MessagesPage() {
               </button>
             </div>
 
+            {/* Compteur bonbons */}
+            <div className="flex justify-center mt-3">
+              <div className="flex items-center gap-2 px-3 py-1.5 rounded-full text-sm" style={{ background: 'rgba(255, 0, 255, 0.15)', border: '1px solid rgba(255, 0, 255, 0.3)' }}>
+                <span>🍬</span>
+                <span className="text-[#FF00FF] font-bold">{userData.bonbons} bonbons</span>
+              </div>
+            </div>
+
             {/* Emojis rapides */}
             <div className="flex justify-center gap-3 mt-4">
               {['😂', '❤️', '🔥', '👏', '🎮', '✨'].map(emoji => (
@@ -358,6 +416,83 @@ export default function MessagesPage() {
           </>
         )}
       </main>
+
+      {/* Animation bonbon envoyé */}
+      {bonbonSent && (
+        <div className="fixed inset-0 pointer-events-none flex items-center justify-center z-50">
+          <div className="text-8xl animate-bounce" style={{ filter: 'drop-shadow(0 0 20px #FF00FF)' }}>
+            {bonbonSent}
+          </div>
+        </div>
+      )}
+
+      {/* Modal envoi bonbon */}
+      {showBonbonModal && (
+        <div
+          className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4"
+          style={{ background: 'rgba(0, 0, 0, 0.8)' }}
+          onClick={() => setShowBonbonModal(false)}
+        >
+          <div
+            className="w-full max-w-md p-6 rounded-t-2xl sm:rounded-2xl"
+            style={{
+              background: '#1A0033',
+              border: '3px solid #FF00FF',
+              boxShadow: '0 0 40px rgba(255, 0, 255, 0.3)',
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="text-center mb-6">
+              <h3 className="text-2xl font-bold mb-2" style={{ fontFamily: 'Bangers, cursive', color: '#FF00FF', textShadow: '0 0 15px #FF00FF' }}>
+                🍬 Envoyer un bonbon
+              </h3>
+              <p className="text-white/60 text-sm">Montre ton intérêt avec un petit cadeau sucré !</p>
+              <div className="flex items-center justify-center gap-2 mt-3">
+                <span className="text-sm text-white/50">Tu as</span>
+                <span className="px-3 py-1 rounded-full font-bold text-[#FF00FF]" style={{ background: 'rgba(255, 0, 255, 0.2)' }}>
+                  🍬 {userData.bonbons}
+                </span>
+              </div>
+            </div>
+
+            <div className="space-y-3">
+              {bonbonTypes.map(bonbon => (
+                <button
+                  key={bonbon.id}
+                  onClick={() => sendBonbon(bonbon)}
+                  disabled={userData.bonbons < bonbon.cost}
+                  className="w-full p-4 rounded-xl flex items-center gap-4 transition hover:scale-[1.02]"
+                  style={{
+                    background: userData.bonbons >= bonbon.cost ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.3)',
+                    border: '2px solid',
+                    borderColor: userData.bonbons >= bonbon.cost ? 'rgba(255, 0, 255, 0.4)' : 'rgba(255, 255, 255, 0.1)',
+                    opacity: userData.bonbons >= bonbon.cost ? 1 : 0.5,
+                    cursor: userData.bonbons >= bonbon.cost ? 'pointer' : 'not-allowed',
+                  }}
+                >
+                  <span className="text-4xl">{bonbon.emoji}</span>
+                  <div className="flex-1 text-left">
+                    <div className="font-bold text-white">{bonbon.name}</div>
+                    <div className="text-sm text-white/50">{bonbon.message}</div>
+                  </div>
+                  <div className="flex items-center gap-1 px-3 py-1.5 rounded-full" style={{ background: 'rgba(255, 0, 255, 0.2)' }}>
+                    <span className="text-[#FF00FF] font-bold">{bonbon.cost}</span>
+                    <span className="text-sm">🍬</span>
+                  </div>
+                </button>
+              ))}
+            </div>
+
+            <button
+              onClick={() => setShowBonbonModal(false)}
+              className="w-full mt-6 py-3 rounded-lg font-bold text-white/60 hover:text-white transition"
+              style={{ background: 'rgba(255, 255, 255, 0.05)' }}
+            >
+              Annuler
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

@@ -1,532 +1,1333 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
-import { useUser, modesConfig, UserMode } from '../contexts/UserContext'
+import { useUser } from '../contexts/UserContext'
 
-// Jeux par mode
-const gamesByMode = {
-  love: [
-    { id: 'manege', icon: '🎠', title: 'Le Manège', description: '3 candidats t\'attendent !', points: 50, isNew: true, path: '/games/manege', color: 'pink' },
-    { id: 'dirty', icon: '💃', title: 'Dirty Dancing', description: 'Vidéos chorés kitsch !', points: 45, isNew: true, path: '/games/dirty-dancing', color: 'pink' },
-    { id: 'marelle', icon: '🔢', title: 'La Marelle', description: 'De + en + intime', points: 40, isNew: false, path: '/games/marelle', color: 'pink' },
-    { id: 'poesie', icon: '📜', title: 'Poésie', description: 'Complète le poème', points: 35, isNew: false, path: '/games/poesie', color: 'pink' },
+// Mock data pour les anniversaires
+const mockBirthdays = {
+  today: [
+    { id: '1', pseudo: 'Marie', avatar: '👩', age: 32 },
+    { id: '2', pseudo: 'Lucas', avatar: '😎', age: 28 },
   ],
-  friends: [
-    { id: 'action-verite', icon: '🎯', title: 'Action ou Vérité', description: 'Le classique revisité', points: 50, isNew: true, path: '/games/action-verite', color: 'blue' },
-    { id: 'goonies', icon: '🏴‍☠️', title: 'Les Goonies', description: 'Chasse au trésor', points: 45, isNew: true, path: '/games/goonies', color: 'yellow' },
-    { id: 'quiz', icon: '🧠', title: 'Quiz 80s', description: 'Culture pop !', points: 40, isNew: false, path: '/games/quiz', color: 'blue' },
-    { id: 'barges', icon: '🤪', title: 'Jeux Barges', description: 'Défis fous', points: 35, isNew: false, path: '/games/barges', color: 'yellow' },
-  ],
-  crew: [
-    { id: 'jeu-oie', icon: '🎲', title: 'Jeu de l\'Oie', description: 'Lance le dé !', points: 50, isNew: true, path: '/games/jeu-oie', color: 'green' },
-    { id: 'escapegame', icon: '🔐', title: 'Escape Game', description: 'Résous les énigmes', points: 45, isNew: true, path: '/games/escape', color: 'green' },
-    { id: 'retrogaming', icon: '🕹️', title: 'Retro Gaming', description: 'Bornes arcade', points: 40, isNew: false, path: '/games/retro', color: 'green' },
-    { id: 'karaoke', icon: '🎤', title: 'Karaoké', description: 'Chante faux !', points: 35, isNew: false, path: '/games/karaoke', color: 'orange' },
+  thisWeek: [
+    { id: '3', pseudo: 'Sophie', avatar: '🧑‍🦰', date: 'Jeudi 9 janvier' },
+    { id: '4', pseudo: 'Antoine', avatar: '🧔', date: 'Samedi 11 janvier' },
+    { id: '5', pseudo: 'Emma', avatar: '👩‍🦳', date: 'Dimanche 12 janvier' },
   ],
 }
 
-// Configuration des défis/jeux de la semaine
-const weekChallenges = [
-  {
-    id: 'manege',
-    icon: '🎠',
-    title: 'Mode Manège',
-    description: '3 candidats t\'attendent !',
-    points: 50,
-    isNew: true,
-    path: '/games/manege',
-    color: 'pink',
-  },
-  {
-    id: 'dirty',
-    icon: '💃',
-    title: 'Dirty Dancing',
-    description: 'Vidéos chorés kitsch !',
-    points: 45,
-    isNew: true,
-    path: '/games/dirty-dancing',
-    color: 'pink',
-  },
-  {
-    id: 'jeu-oie',
-    icon: '🎲',
-    title: 'Jeu de l\'Oie',
-    description: 'Lance le dé et avance !',
-    points: 40,
-    isNew: false,
-    path: '/games/jeu-oie',
-    color: 'green',
-  },
-  {
-    id: 'action-verite',
-    icon: '🎯',
-    title: 'Action ou Vérité',
-    description: 'Le classique revisité',
-    points: 35,
-    isNew: false,
-    path: '/games/action-verite',
-    color: 'blue',
-  },
-]
-
-// Jeux à venir (grisés)
-const upcomingGames = [
-  { id: 'goonies', icon: '🏴‍☠️', title: 'Les Goonies', unlockWeek: 3 },
-  { id: 'temple', icon: '🗿', title: 'Temple Maudit', unlockWeek: 4 },
-  { id: 'point-break', icon: '🏄', title: 'Point Break', unlockWeek: 5 },
-]
+// Mock : vœux reçus si c'est mon anniversaire
+const mockMyBirthdayWishes = {
+  isMyBirthday: false, // Mettre à true pour tester
+  wishCount: 12,
+  wishes: [
+    { sender: 'Marie', type: 'bonbon', bonbonType: 'Malabar' },
+    { sender: 'Lucas', type: 'bille' },
+    { sender: 'Sophie', type: 'simple' },
+  ],
+  totalBonbons: 3,
+  totalBilles: 2,
+}
 
 export default function DashboardPage() {
-  const router = useRouter()
-  const [activeTab, setActiveTab] = useState('home')
-  const [showModeSelector, setShowModeSelector] = useState(false)
-  const { user: userData, currentMode, setMode, isLoading } = useUser()
+  const { user: userData } = useUser()
+  const [mounted, setMounted] = useState(false)
+  const [showBirthdayModal, setShowBirthdayModal] = useState(false)
+  const [wishedToday, setWishedToday] = useState<Record<string, string>>({}) // userId -> type de vœu
+  const [showWishSent, setShowWishSent] = useState<string | null>(null)
 
-  // Données utilisateur
-  const user = {
-    pseudo: userData.pseudo || 'Visiteur',
-    avatar: currentMode.icon,
-    notifications: 2,
+  useEffect(() => {
+    setMounted(true)
+    // Afficher le modal si c'est mon anniversaire
+    if (mockMyBirthdayWishes.isMyBirthday) {
+      setTimeout(() => setShowBirthdayModal(true), 500)
+    }
+  }, [])
+
+  const handleSendWish = (userId: string, type: 'bille' | 'bonbon' | 'simple') => {
+    setWishedToday(prev => ({ ...prev, [userId]: type }))
+    setShowWishSent(userId)
+    setTimeout(() => setShowWishSent(null), 2000)
   }
 
-  // Jeux selon le mode
-  const modeGames = gamesByMode[userData.mode] || gamesByMode.love
-
-  // Données saison selon le mode
-  const seasonByMode = {
-    love: { theme: 'Crush Time', emoji: '💕' },
-    friends: { theme: 'Squad Goals', emoji: '🤝' },
-    crew: { theme: 'Event Season', emoji: '🎉' },
-  }
-
-  const season = {
-    number: 1,
-    theme: seasonByMode[userData.mode]?.theme || 'Découverte',
-    emoji: seasonByMode[userData.mode]?.emoji || '🎠',
-    startDate: '10 déc',
-    endDate: '17 déc',
-    daysLeft: 7,
-  }
-
-  // Stats utilisateur
   const stats = {
-    challenges: { done: 0, total: 3 },
-    points: 0,
-    rank: '-',
-  }
-
-  // Changer de mode
-  const handleModeChange = (mode: UserMode) => {
-    setMode(mode)
-    setShowModeSelector(false)
-  }
-
-  const getCardColor = (color: string) => {
-    switch(color) {
-      case 'pink': return 'border-[#FF00FF] hover:shadow-[0_0_30px_#FF00FF]'
-      case 'green': return 'border-[#39FF14] hover:shadow-[0_0_30px_#39FF14]'
-      case 'blue': return 'border-[#00FFFF] hover:shadow-[0_0_30px_#00FFFF]'
-      case 'yellow': return 'border-[#FFFF00] hover:shadow-[0_0_30px_#FFFF00]'
-      default: return 'border-[#FF00FF]'
-    }
-  }
-
-  const getTitleColor = (color: string) => {
-    switch(color) {
-      case 'pink': return 'text-[#FF00FF]'
-      case 'green': return 'text-[#39FF14]'
-      case 'blue': return 'text-[#00FFFF]'
-      case 'yellow': return 'text-[#FFFF00]'
-      default: return 'text-[#FF00FF]'
-    }
+    billes: userData.billes || 0,
+    bonbons: userData.bonbons || 10,
   }
 
   return (
-    <div className="min-h-screen pb-12">
-      {/* Background Pattern */}
-      <div className="bg-pattern" />
-
+    <div className="dashboard-page">
       <style jsx>{`
-        .dashboard-main {
-          max-width: 600px;
-          margin: 0 auto;
-          padding: 32px 24px;
-          width: 100%;
+        /* ===== VARIABLES ===== */
+        .dashboard-page {
+          --neon-pink: #FF00FF;
+          --neon-green: #39FF14;
+          --neon-blue: #00FFFF;
+          --neon-yellow: #FFFF00;
+          --neon-orange: #FF6600;
+          --purple-dark: #1A0033;
+          --purple-mid: #330066;
+
+          font-family: 'Comic Neue', system-ui, sans-serif;
+          background: var(--purple-dark);
+          color: #fff;
+          min-height: 100vh;
+          overflow-x: hidden;
+          position: relative;
         }
-        @media (min-width: 768px) {
-          .dashboard-main {
-            max-width: 800px;
-            padding: 40px 32px;
-          }
+
+        /* ===== BACKGROUND PATTERN ===== */
+        .bg-pattern {
+          position: fixed;
+          top: 0;
+          left: 0;
+          right: 0;
+          bottom: 0;
+          background:
+            repeating-linear-gradient(
+              90deg,
+              transparent,
+              transparent 50px,
+              rgba(255, 0, 255, 0.03) 50px,
+              rgba(255, 0, 255, 0.03) 100px
+            ),
+            repeating-linear-gradient(
+              0deg,
+              transparent,
+              transparent 50px,
+              rgba(0, 255, 255, 0.03) 50px,
+              rgba(0, 255, 255, 0.03) 100px
+            );
+          z-index: 0;
+          pointer-events: none;
         }
-        .section {
-          margin-bottom: 48px;
+
+        /* ===== FLOATING SHAPES ===== */
+        .shape {
+          position: fixed;
+          opacity: 0.5;
+          animation: float 6s ease-in-out infinite;
+          z-index: 1;
+          pointer-events: none;
         }
-        .section-title {
-          margin: 32px 0 20px;
-          font-size: 1.1rem;
-          color: rgba(255, 255, 255, 0.6);
-          text-transform: uppercase;
-          letter-spacing: 2px;
+
+        .shape-1 {
+          top: 15%;
+          left: 8%;
+          width: 80px;
+          height: 80px;
+          background: var(--neon-pink);
+          clip-path: polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%);
+          animation-delay: 0s;
         }
-        .hero-block {
-          background: linear-gradient(135deg, rgba(255, 0, 255, 0.15), rgba(0, 255, 255, 0.08));
-          border: 2px solid rgba(255, 0, 255, 0.5);
-          border-radius: 20px;
-          padding: 28px;
-          margin-bottom: 48px;
+
+        .shape-2 {
+          top: 25%;
+          right: 10%;
+          width: 60px;
+          height: 60px;
+          background: var(--neon-green);
+          clip-path: polygon(50% 0%, 61% 35%, 98% 35%, 68% 57%, 79% 91%, 50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%);
+          animation-delay: 1s;
         }
-        .stats-grid {
-          display: grid;
-          grid-template-columns: repeat(3, 1fr);
-          gap: 16px;
-          margin-top: 24px;
+
+        .shape-3 {
+          bottom: 30%;
+          left: 5%;
+          width: 50px;
+          height: 50px;
+          background: var(--neon-blue);
+          border-radius: 50%;
+          animation-delay: 2s;
         }
-        .stat-box {
-          text-align: center;
-          padding: 16px 8px;
-          background: rgba(0, 0, 0, 0.3);
-          border-radius: 12px;
+
+        .shape-4 {
+          bottom: 20%;
+          right: 8%;
+          width: 70px;
+          height: 70px;
+          background: var(--neon-yellow);
+          clip-path: polygon(25% 0%, 75% 0%, 100% 50%, 75% 100%, 25% 100%, 0% 50%);
+          animation-delay: 3s;
         }
-        .stat-value {
+
+        @keyframes float {
+          0%, 100% { transform: translateY(0) rotate(0deg); }
+          50% { transform: translateY(-25px) rotate(10deg); }
+        }
+
+        /* ===== HEADER ===== */
+        .header {
+          position: fixed;
+          top: 0;
+          left: 0;
+          right: 0;
+          z-index: 100;
+          background: linear-gradient(90deg, var(--neon-pink), var(--neon-blue), var(--neon-green));
+          padding: 3px;
+        }
+
+        .header-inner {
+          background: var(--purple-dark);
+          padding: 12px 20px;
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+        }
+
+        .logo {
           font-family: 'Bangers', cursive;
-          font-size: 2rem;
-          color: #39FF14;
-          text-shadow: 0 0 20px rgba(57, 255, 20, 0.5);
-        }
-        .stat-label {
-          font-size: 0.75rem;
-          color: rgba(255, 255, 255, 0.6);
-          text-transform: uppercase;
-          margin-top: 4px;
-        }
-        .game-card {
-          background: rgba(0, 0, 0, 0.3);
-          border: 2px solid rgba(57, 255, 20, 0.6);
-          border-radius: 16px;
-          padding: 24px;
-          margin-bottom: 16px;
+          font-size: 1.6rem;
+          color: var(--neon-pink);
+          text-shadow:
+            0 0 10px var(--neon-pink),
+            0 0 20px var(--neon-pink),
+            2px 2px 0 var(--neon-blue);
           display: flex;
           align-items: center;
-          gap: 20px;
-          cursor: pointer;
+          gap: 8px;
+          text-decoration: none;
+          letter-spacing: 1px;
+        }
+
+        .logo-icon {
+          font-size: 1.4rem;
+          animation: spin 4s linear infinite;
+        }
+
+        @keyframes spin {
+          from { transform: rotate(0deg); }
+          to { transform: rotate(360deg); }
+        }
+
+        .currency-btns {
+          display: flex;
+          gap: 12px;
+        }
+
+        .currency-btn {
+          display: flex;
+          align-items: center;
+          gap: 6px;
+          padding: 8px 14px;
+          background: transparent;
+          border: 2px solid;
+          text-decoration: none;
+          font-weight: 700;
+          font-size: 0.9rem;
           transition: all 0.3s;
         }
-        .game-card:hover {
-          border-color: #FF00FF;
-          transform: translateX(8px);
-          box-shadow: 0 0 30px rgba(255, 0, 255, 0.3);
+
+        .currency-btn.billes {
+          color: var(--neon-blue);
+          border-color: var(--neon-blue);
+          box-shadow: 0 0 10px rgba(0, 255, 255, 0.3);
         }
-        .game-card:active {
-          transform: translateX(4px) scale(0.98);
+
+        .currency-btn.billes:hover {
+          background: var(--neon-blue);
+          color: var(--purple-dark);
+          box-shadow: 0 0 20px var(--neon-blue);
         }
-        .game-icon {
-          font-size: 3rem;
-          min-width: 70px;
-          height: 70px;
+
+        .currency-btn.bonbons {
+          color: var(--neon-pink);
+          border-color: var(--neon-pink);
+          box-shadow: 0 0 10px rgba(255, 0, 255, 0.3);
+        }
+
+        .currency-btn.bonbons:hover {
+          background: var(--neon-pink);
+          color: var(--purple-dark);
+          box-shadow: 0 0 20px var(--neon-pink);
+        }
+
+        /* ===== NAV MENU ===== */
+        .nav-menu {
+          background: var(--purple-mid);
+          padding: 8px 0;
+          border-bottom: 2px solid var(--neon-pink);
+        }
+
+        .nav-items {
+          display: flex;
+          justify-content: center;
+          gap: 8px;
+          max-width: 800px;
+          margin: 0 auto;
+          padding: 0 10px;
+          overflow-x: auto;
+        }
+
+        .nav-item {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          gap: 2px;
+          padding: 8px 12px;
+          text-decoration: none;
+          color: rgba(255, 255, 255, 0.6);
+          font-size: 0.65rem;
+          font-weight: 700;
+          text-transform: uppercase;
+          letter-spacing: 1px;
+          transition: all 0.3s;
+          white-space: nowrap;
+        }
+
+        .nav-item:hover {
+          color: var(--neon-green);
+          text-shadow: 0 0 10px var(--neon-green);
+        }
+
+        .nav-item.active {
+          color: var(--neon-yellow);
+          text-shadow: 0 0 10px var(--neon-yellow);
+        }
+
+        .nav-item.highlight {
+          color: var(--neon-pink);
+          text-shadow: 0 0 15px var(--neon-pink);
+        }
+
+        .nav-item span:first-child {
+          font-size: 1.2rem;
+        }
+
+        /* ===== MARQUEE ===== */
+        .marquee-container {
+          background: var(--neon-pink);
+          padding: 10px 0;
+          overflow: hidden;
+        }
+
+        .marquee {
+          display: flex;
+          animation: marquee 25s linear infinite;
+        }
+
+        .marquee-content {
+          display: flex;
+          gap: 40px;
+          padding-right: 40px;
+          white-space: nowrap;
+        }
+
+        .marquee-item {
+          font-family: 'Bangers', cursive;
+          font-size: 1rem;
+          color: var(--purple-dark);
+          letter-spacing: 2px;
+          text-transform: uppercase;
+        }
+
+        @keyframes marquee {
+          0% { transform: translateX(0); }
+          100% { transform: translateX(-50%); }
+        }
+
+        /* ===== HERO ===== */
+        .hero {
+          position: relative;
+          z-index: 10;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          text-align: center;
+          padding: 50px 20px 80px;
+          max-width: 900px;
+          margin: 0 auto;
+        }
+
+        @media (max-width: 768px) {
+          .hero {
+            padding: 30px 16px 60px;
+          }
+        }
+
+        .mascot {
+          font-size: 7rem;
+          margin-bottom: 15px;
+          animation: pulse 1.5s ease-in-out infinite;
+          filter: drop-shadow(0 0 30px var(--neon-pink));
+        }
+
+        @keyframes pulse {
+          0%, 100% { transform: scale(1); }
+          50% { transform: scale(1.1); }
+        }
+
+        .hero-title {
+          font-family: 'Bangers', cursive;
+          font-size: 3.5rem;
+          color: var(--neon-yellow);
+          margin-bottom: 15px;
+          text-shadow:
+            0 0 10px var(--neon-yellow),
+            0 0 20px var(--neon-yellow),
+            0 0 40px var(--neon-yellow),
+            4px 4px 0 var(--neon-pink);
+          letter-spacing: 4px;
+          text-transform: uppercase;
+        }
+
+        @media (min-width: 640px) {
+          .hero-title {
+            font-size: 4.5rem;
+          }
+        }
+
+        .hero-subtitle {
+          font-size: 1.3rem;
+          color: var(--neon-blue);
+          font-weight: 700;
+          text-shadow: 0 0 10px var(--neon-blue);
+          margin-bottom: 35px;
+          max-width: 500px;
+        }
+
+        /* ===== BUTTONS ===== */
+        .cta-buttons {
+          display: flex;
+          flex-direction: column;
+          gap: 24px;
+          align-items: center;
+          margin-bottom: 50px;
+        }
+
+        /* ===== BOUTON PRIMAIRE - ALLER À LA RÉCRÉ ===== */
+        .btn-primary-wrapper {
+          position: relative;
+          padding: 6px;
+          border-radius: 30px;
+          background: linear-gradient(90deg, #FF00FF, #00FFFF, #FFFF00, #FF00FF);
+          background-size: 300% 100%;
+          animation: rainbow-border 3s linear infinite;
+        }
+
+        @keyframes rainbow-border {
+          0% { background-position: 0% 50%; }
+          100% { background-position: 300% 50%; }
+        }
+
+        .btn-primary {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          gap: 15px;
+          background: linear-gradient(135deg, #FF00FF 0%, #FF3399 50%, #FF00FF 100%);
+          background-size: 200% 200%;
+          color: #fff;
+          padding: 28px 70px;
+          font-family: 'Bangers', cursive;
+          font-size: 2.2rem;
+          letter-spacing: 4px;
+          text-decoration: none;
+          text-transform: uppercase;
+          border: none;
+          border-radius: 24px;
+          box-shadow:
+            0 0 30px var(--neon-pink),
+            0 0 60px var(--neon-pink),
+            0 0 100px rgba(255, 0, 255, 0.6),
+            inset 0 0 30px rgba(255, 255, 255, 0.2);
+          transition: all 0.3s;
+          animation: btn-mega-glow 1.5s ease-in-out infinite, btn-gradient 3s ease infinite, btn-bounce 2s ease-in-out infinite;
+          text-shadow: 0 0 10px #fff, 0 0 20px #fff, 0 0 30px #fff;
+          position: relative;
+          overflow: hidden;
+        }
+
+        .btn-primary::before {
+          content: '';
+          position: absolute;
+          top: -50%;
+          left: -50%;
+          width: 200%;
+          height: 200%;
+          background: linear-gradient(
+            45deg,
+            transparent 30%,
+            rgba(255, 255, 255, 0.4) 50%,
+            transparent 70%
+          );
+          animation: btn-shine 2s linear infinite;
+        }
+
+        .btn-primary::after {
+          content: '';
+          position: absolute;
+          inset: 0;
+          border-radius: 24px;
+          padding: 3px;
+          background: linear-gradient(45deg, #FF00FF, #00FFFF, #FFFF00, #FF00FF);
+          background-size: 400% 400%;
+          animation: rainbow-glow 4s ease infinite;
+          -webkit-mask:
+            linear-gradient(#fff 0 0) content-box,
+            linear-gradient(#fff 0 0);
+          -webkit-mask-composite: xor;
+          mask-composite: exclude;
+          pointer-events: none;
+        }
+
+        @keyframes rainbow-glow {
+          0%, 100% { background-position: 0% 50%; }
+          50% { background-position: 100% 50%; }
+        }
+
+        @keyframes btn-shine {
+          0% { transform: translateX(-100%) rotate(45deg); }
+          100% { transform: translateX(100%) rotate(45deg); }
+        }
+
+        @keyframes btn-mega-glow {
+          0%, 100% {
+            box-shadow:
+              0 0 30px var(--neon-pink),
+              0 0 60px var(--neon-pink),
+              0 0 100px rgba(255, 0, 255, 0.6),
+              inset 0 0 30px rgba(255, 255, 255, 0.2);
+          }
+          50% {
+            box-shadow:
+              0 0 50px var(--neon-pink),
+              0 0 100px var(--neon-pink),
+              0 0 150px rgba(255, 0, 255, 0.8),
+              inset 0 0 50px rgba(255, 255, 255, 0.3);
+          }
+        }
+
+        @keyframes btn-gradient {
+          0%, 100% { background-position: 0% 50%; }
+          50% { background-position: 100% 50%; }
+        }
+
+        @keyframes btn-bounce {
+          0%, 100% { transform: scale(1) translateY(0); }
+          25% { transform: scale(1.03) translateY(-4px); }
+          50% { transform: scale(1) translateY(0); }
+          75% { transform: scale(1.03) translateY(-4px); }
+        }
+
+        @keyframes btn-glow {
+          0%, 100% { box-shadow: 0 0 40px var(--neon-pink), 0 0 80px rgba(255, 0, 255, 0.3); }
+          50% { box-shadow: 0 0 60px var(--neon-pink), 0 0 100px rgba(255, 0, 255, 0.5); }
+        }
+
+        .btn-primary:hover {
+          transform: scale(1.15) translateY(-5px) !important;
+          box-shadow:
+            0 0 60px var(--neon-pink),
+            0 0 120px var(--neon-pink),
+            0 0 180px rgba(255, 0, 255, 0.9),
+            inset 0 0 60px rgba(255, 255, 255, 0.4);
+          animation: none;
+        }
+
+        /* ===== BOUTON SECONDAIRE - INVITER MES POTES ===== */
+        .btn-secondary-wrapper {
+          position: relative;
+          padding: 5px;
+          border-radius: 25px;
+          background: linear-gradient(90deg, #39FF14, #00FFFF, #39FF14);
+          background-size: 200% 100%;
+          animation: green-border-flow 2s linear infinite;
+          box-shadow:
+            0 0 20px rgba(57, 255, 20, 0.5),
+            0 0 40px rgba(57, 255, 20, 0.3);
+        }
+
+        @keyframes green-border-flow {
+          0% { background-position: 0% 50%; }
+          100% { background-position: 200% 50%; }
+        }
+
+        .btn-secondary {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          gap: 12px;
+          background: linear-gradient(135deg, rgba(57, 255, 20, 0.2) 0%, rgba(57, 255, 20, 0.35) 50%, rgba(0, 255, 255, 0.2) 100%);
+          background-size: 200% 200%;
+          color: var(--neon-green);
+          padding: 22px 55px;
+          font-family: 'Bangers', cursive;
+          font-size: 1.6rem;
+          letter-spacing: 3px;
+          text-decoration: none;
+          text-transform: uppercase;
+          border: none;
+          border-radius: 20px;
+          box-shadow:
+            inset 0 0 25px rgba(57, 255, 20, 0.15),
+            inset 0 0 50px rgba(0, 255, 255, 0.1);
+          transition: all 0.3s;
+          animation: btn-secondary-pulse 2s ease-in-out infinite, btn-secondary-gradient 4s ease infinite;
+          text-shadow: 0 0 15px var(--neon-green), 0 0 25px var(--neon-green);
+          position: relative;
+          overflow: hidden;
+        }
+
+        .btn-secondary::before {
+          content: '✨';
+          position: absolute;
+          left: 20px;
+          font-size: 1.2rem;
+          animation: sparkle-left 1.5s ease-in-out infinite;
+        }
+
+        .btn-secondary::after {
+          content: '✨';
+          position: absolute;
+          right: 20px;
+          font-size: 1.2rem;
+          animation: sparkle-right 1.5s ease-in-out infinite 0.75s;
+        }
+
+        @keyframes sparkle-left {
+          0%, 100% { opacity: 0.3; transform: scale(0.8); }
+          50% { opacity: 1; transform: scale(1.2); }
+        }
+
+        @keyframes sparkle-right {
+          0%, 100% { opacity: 0.3; transform: scale(0.8); }
+          50% { opacity: 1; transform: scale(1.2); }
+        }
+
+        @keyframes btn-secondary-gradient {
+          0%, 100% { background-position: 0% 50%; }
+          50% { background-position: 100% 50%; }
+        }
+
+        @keyframes btn-secondary-pulse {
+          0%, 100% {
+            box-shadow:
+              inset 0 0 25px rgba(57, 255, 20, 0.15),
+              inset 0 0 50px rgba(0, 255, 255, 0.1);
+            transform: scale(1);
+          }
+          50% {
+            box-shadow:
+              inset 0 0 35px rgba(57, 255, 20, 0.25),
+              inset 0 0 70px rgba(0, 255, 255, 0.15);
+            transform: scale(1.02);
+          }
+        }
+
+        .btn-secondary-wrapper:hover {
+          box-shadow:
+            0 0 40px rgba(57, 255, 20, 0.8),
+            0 0 80px rgba(57, 255, 20, 0.5),
+            0 0 120px rgba(0, 255, 255, 0.3);
+        }
+
+        .btn-secondary:hover {
+          background: linear-gradient(135deg, var(--neon-green) 0%, #00E5CC 100%);
+          color: var(--purple-dark);
+          transform: scale(1.05);
+          animation: none;
+          text-shadow: none;
+        }
+
+        .invite-hint {
+          font-size: 1rem;
+          color: var(--neon-green);
+          font-weight: 700;
+          margin-top: 5px;
+          text-shadow: 0 0 8px var(--neon-green);
+          animation: hint-pulse 2s ease-in-out infinite;
+        }
+
+        @keyframes hint-pulse {
+          0%, 100% { opacity: 0.7; }
+          50% { opacity: 1; }
+        }
+
+        /* ===== STATS ===== */
+        .stats-row {
+          display: flex;
+          gap: 25px;
+          justify-content: center;
+          margin-bottom: 30px;
+        }
+
+        .stat-card {
+          background: rgba(255, 255, 255, 0.03);
+          padding: 18px 30px;
+          border: 2px solid var(--neon-blue);
+          box-shadow:
+            0 0 10px rgba(0, 255, 255, 0.3),
+            inset 0 0 15px rgba(0, 255, 255, 0.1);
+          text-align: center;
+        }
+
+        .stat-number {
+          font-family: 'Bangers', cursive;
+          font-size: 2.2rem;
+          color: var(--neon-yellow);
+          text-shadow: 0 0 15px var(--neon-yellow);
+          letter-spacing: 2px;
+        }
+
+        .stat-label {
+          font-weight: 700;
+          color: var(--neon-blue);
+          font-size: 0.8rem;
+          text-transform: uppercase;
+          letter-spacing: 1px;
+        }
+
+        /* ===== LINK ===== */
+        .recre-link {
+          color: var(--neon-green);
+          font-weight: 700;
+          text-decoration: none;
+          font-size: 1rem;
+          text-shadow: 0 0 10px var(--neon-green);
+          transition: all 0.3s;
+        }
+
+        .recre-link:hover {
+          color: var(--neon-yellow);
+          text-shadow: 0 0 15px var(--neon-yellow);
+        }
+
+        /* ===== ANIMATIONS ===== */
+        .fade-in {
+          animation: fadeIn 0.5s ease-out forwards;
+        }
+
+        .fade-in-delay-1 {
+          animation: fadeIn 0.5s ease-out 0.1s forwards;
+          opacity: 0;
+        }
+
+        .fade-in-delay-2 {
+          animation: fadeIn 0.5s ease-out 0.2s forwards;
+          opacity: 0;
+        }
+
+        .fade-in-delay-3 {
+          animation: fadeIn 0.5s ease-out 0.3s forwards;
+          opacity: 0;
+        }
+
+        @keyframes fadeIn {
+          from {
+            opacity: 0;
+            transform: translateY(15px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+
+        /* ===== BIRTHDAY SECTION ===== */
+        .birthday-section {
+          background: rgba(255, 255, 255, 0.03);
+          border: 2px solid rgba(255, 107, 171, 0.4);
+          border-radius: 20px;
+          padding: 24px;
+          margin-top: 40px;
+          box-shadow: 0 0 30px rgba(255, 107, 171, 0.1);
+        }
+
+        .birthday-header {
+          display: flex;
+          align-items: center;
+          gap: 12px;
+          margin-bottom: 8px;
+        }
+
+        .birthday-title {
+          font-family: 'Bangers', cursive;
+          font-size: 1.5rem;
+          color: #FF6BAB;
+          text-shadow: 0 0 10px rgba(255, 107, 171, 0.5);
+        }
+
+        .birthday-subtitle {
+          color: rgba(255, 255, 255, 0.5);
+          font-size: 0.85rem;
+          font-style: italic;
+          margin-bottom: 20px;
+        }
+
+        .birthday-group-title {
+          font-size: 0.9rem;
+          font-weight: 700;
+          color: var(--neon-yellow);
+          margin-bottom: 12px;
+          display: flex;
+          align-items: center;
+          gap: 8px;
+        }
+
+        .birthday-card {
+          display: flex;
+          align-items: center;
+          gap: 12px;
+          padding: 16px;
+          background: rgba(255, 255, 255, 0.02);
+          border-radius: 12px;
+          margin-bottom: 12px;
+          border: 1px solid rgba(255, 255, 255, 0.1);
+          transition: all 0.3s;
+        }
+
+        .birthday-card:hover {
+          background: rgba(255, 255, 255, 0.05);
+          border-color: rgba(255, 107, 171, 0.3);
+        }
+
+        .birthday-avatar {
+          font-size: 2.5rem;
+          width: 50px;
+          height: 50px;
           display: flex;
           align-items: center;
           justify-content: center;
-          background: rgba(255, 255, 255, 0.1);
-          border-radius: 12px;
+          background: rgba(255, 107, 171, 0.15);
+          border-radius: 50%;
+          border: 2px solid rgba(255, 107, 171, 0.3);
         }
-        .game-title {
-          font-family: 'Bangers', cursive;
+
+        .birthday-info {
+          flex: 1;
+        }
+
+        .birthday-name {
+          font-weight: 700;
+          color: #fff;
+          font-size: 1rem;
+        }
+
+        .birthday-age {
+          color: var(--neon-pink);
+          font-weight: 600;
+        }
+
+        .birthday-date {
+          color: rgba(255, 255, 255, 0.5);
+          font-size: 0.85rem;
+        }
+
+        .birthday-actions {
+          display: flex;
+          gap: 8px;
+          flex-wrap: wrap;
+        }
+
+        .birthday-btn {
+          display: flex;
+          align-items: center;
+          gap: 4px;
+          padding: 8px 12px;
+          border-radius: 20px;
+          font-size: 0.75rem;
+          font-weight: 700;
+          border: 2px solid;
+          background: transparent;
+          cursor: pointer;
+          transition: all 0.2s;
+        }
+
+        .birthday-btn.bille {
+          color: var(--neon-blue);
+          border-color: var(--neon-blue);
+        }
+
+        .birthday-btn.bille:hover {
+          background: var(--neon-blue);
+          color: var(--purple-dark);
+        }
+
+        .birthday-btn.bonbon {
+          color: var(--neon-pink);
+          border-color: var(--neon-pink);
+        }
+
+        .birthday-btn.bonbon:hover {
+          background: var(--neon-pink);
+          color: var(--purple-dark);
+        }
+
+        .birthday-btn.simple {
+          color: var(--neon-green);
+          border-color: var(--neon-green);
+        }
+
+        .birthday-btn.simple:hover {
+          background: var(--neon-green);
+          color: var(--purple-dark);
+        }
+
+        .birthday-btn.sent {
+          opacity: 0.5;
+          cursor: not-allowed;
+          background: rgba(255, 255, 255, 0.1);
+        }
+
+        .birthday-week-item {
+          display: flex;
+          align-items: center;
+          gap: 12px;
+          padding: 10px 0;
+          border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .birthday-week-item:last-child {
+          border-bottom: none;
+        }
+
+        .birthday-week-avatar {
           font-size: 1.5rem;
-          color: #FFFFFF;
-          letter-spacing: 1px;
+        }
+
+        .birthday-week-info {
+          flex: 1;
+        }
+
+        .birthday-week-name {
+          color: #fff;
+          font-weight: 600;
+          font-size: 0.9rem;
+        }
+
+        .birthday-week-date {
+          color: rgba(255, 255, 255, 0.4);
+          font-size: 0.8rem;
+        }
+
+        .birthday-view-all {
+          display: block;
+          text-align: center;
+          margin-top: 16px;
+          color: var(--neon-pink);
+          font-weight: 600;
+          text-decoration: none;
+          font-size: 0.9rem;
+          transition: all 0.3s;
+        }
+
+        .birthday-view-all:hover {
+          color: var(--neon-yellow);
+          text-shadow: 0 0 10px var(--neon-yellow);
+        }
+
+        .wish-sent-badge {
+          display: inline-flex;
+          align-items: center;
+          gap: 6px;
+          padding: 6px 12px;
+          background: linear-gradient(135deg, var(--neon-green), #00D4AA);
+          color: var(--purple-dark);
+          border-radius: 20px;
+          font-size: 0.75rem;
+          font-weight: 700;
+          animation: pop-in 0.3s ease-out;
+        }
+
+        @keyframes pop-in {
+          0% { transform: scale(0); }
+          50% { transform: scale(1.2); }
+          100% { transform: scale(1); }
+        }
+
+        /* ===== BIRTHDAY MODAL ===== */
+        .birthday-modal-overlay {
+          position: fixed;
+          top: 0;
+          left: 0;
+          right: 0;
+          bottom: 0;
+          background: rgba(0, 0, 0, 0.85);
+          z-index: 1000;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          padding: 20px;
+          animation: modal-fade-in 0.3s ease-out;
+        }
+
+        @keyframes modal-fade-in {
+          from { opacity: 0; }
+          to { opacity: 1; }
+        }
+
+        .birthday-modal {
+          background: linear-gradient(180deg, #2D0A4E 0%, #1A0033 100%);
+          border: 3px solid var(--neon-pink);
+          border-radius: 24px;
+          padding: 32px;
+          max-width: 400px;
+          width: 100%;
+          text-align: center;
+          box-shadow: 0 0 60px rgba(255, 0, 255, 0.4);
+          animation: modal-pop 0.4s ease-out;
+        }
+
+        @keyframes modal-pop {
+          0% { transform: scale(0.8); opacity: 0; }
+          100% { transform: scale(1); opacity: 1; }
+        }
+
+        .birthday-modal-emoji {
+          font-size: 5rem;
+          margin-bottom: 16px;
+          animation: bounce 1s ease-in-out infinite;
+        }
+
+        @keyframes bounce {
+          0%, 100% { transform: translateY(0); }
+          50% { transform: translateY(-15px); }
+        }
+
+        .birthday-modal-title {
+          font-family: 'Bangers', cursive;
+          font-size: 2rem;
+          color: var(--neon-yellow);
+          text-shadow: 0 0 20px var(--neon-yellow);
+          margin-bottom: 16px;
+        }
+
+        .birthday-modal-count {
+          font-size: 1.1rem;
+          color: #fff;
+          margin-bottom: 20px;
+        }
+
+        .birthday-modal-balloons {
+          font-size: 1.5rem;
+          letter-spacing: 4px;
+          margin-bottom: 20px;
+        }
+
+        .birthday-modal-senders {
+          color: rgba(255, 255, 255, 0.7);
+          font-size: 0.9rem;
+          margin-bottom: 20px;
+        }
+
+        .birthday-modal-gifts {
+          background: rgba(255, 255, 255, 0.05);
+          border-radius: 12px;
+          padding: 16px;
+          margin-bottom: 24px;
+        }
+
+        .birthday-modal-gifts-title {
+          color: var(--neon-pink);
+          font-weight: 700;
+          margin-bottom: 12px;
+        }
+
+        .birthday-modal-gift-item {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 8px;
+          color: #fff;
+          font-size: 1rem;
           margin-bottom: 4px;
         }
-        .game-desc {
-          font-size: 0.9rem;
+
+        .birthday-modal-btn {
+          display: inline-block;
+          padding: 14px 32px;
+          background: linear-gradient(135deg, var(--neon-pink), #FF3399);
+          color: #fff;
+          font-family: 'Bangers', cursive;
+          font-size: 1.2rem;
+          letter-spacing: 2px;
+          text-decoration: none;
+          border-radius: 30px;
+          border: none;
+          cursor: pointer;
+          box-shadow: 0 0 30px rgba(255, 0, 255, 0.5);
+          transition: all 0.3s;
+        }
+
+        .birthday-modal-btn:hover {
+          transform: scale(1.05);
+          box-shadow: 0 0 50px rgba(255, 0, 255, 0.7);
+        }
+
+        .birthday-modal-close {
+          position: absolute;
+          top: 16px;
+          right: 16px;
+          background: none;
+          border: none;
           color: rgba(255, 255, 255, 0.5);
+          font-size: 1.5rem;
+          cursor: pointer;
+          transition: color 0.3s;
         }
-        .game-badge {
-          margin-left: auto;
-          padding: 6px 12px;
-          border-radius: 8px;
-          font-size: 0.8rem;
-          font-weight: bold;
-        }
-        .badge-new {
-          background: #FF00FF;
-          color: white;
-        }
-        .badge-points {
-          background: rgba(57, 255, 20, 0.2);
-          color: #39FF14;
-          border: 1px solid rgba(57, 255, 20, 0.5);
-        }
-        .top-nav {
-          display: none;
-        }
-        @media (min-width: 768px) {
-          .top-nav {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            flex-wrap: wrap;
-            justify-content: center;
-            padding-bottom: 8px;
-          }
-          .top-nav-item {
-            display: flex;
-            align-items: center;
-            gap: 6px;
-            padding: 8px 12px;
-            font-size: 0.75rem;
-            font-weight: bold;
-            color: rgba(255, 255, 255, 0.8);
-            transition: all 0.2s;
-            border: 2px solid rgba(255, 255, 255, 0.25);
-            border-radius: 8px;
-            background: rgba(255, 255, 255, 0.05);
-          }
-          .top-nav-item:hover {
-            color: #FF00FF;
-            border-color: #FF00FF;
-            background: rgba(255, 0, 255, 0.15);
-            text-shadow: 0 0 10px #FF00FF;
-            transform: translateY(-2px);
-          }
-          .top-nav-item.active {
-            color: #FF00FF;
-            border-color: #FF00FF;
-            background: rgba(255, 0, 255, 0.2);
-            text-shadow: 0 0 10px #FF00FF;
-            box-shadow: 0 0 15px rgba(255, 0, 255, 0.3);
-          }
-          .top-nav-item .nav-emoji {
-            font-size: 1.2rem;
-          }
+
+        .birthday-modal-close:hover {
+          color: #fff;
         }
       `}</style>
 
-      {/* Header avec navigation */}
-      <header className="sticky top-0 z-40">
-        <div className="h-1 bg-gradient-to-r from-[#FF00FF] via-[#00FFFF] to-[#39FF14]" />
-        <div className="bg-[#0D001A]/98 backdrop-blur-sm px-4 py-5">
-          {/* Ligne 1: Logo + Mode Selector + Notifications */}
-          <div className="max-w-5xl mx-auto flex items-center justify-between mb-3">
-            <Link href="/" className="logo-90s text-xl">
-              <span className="animate-spin inline-block text-lg">🎠</span>
-              GameCrush
+      {/* Background pattern */}
+      <div className="bg-pattern" />
+
+      {/* Floating shapes */}
+      <div className="shape shape-1" />
+      <div className="shape shape-2" />
+      <div className="shape shape-3" />
+      <div className="shape shape-4" />
+
+      {/* Header avec bordure néon */}
+      <header className="header">
+        <div className="header-inner">
+          <Link href="/" className="logo">
+            <span className="logo-icon">🎠</span>
+            Déli Délo
+          </Link>
+
+          <div className="currency-btns">
+            <Link href="/collection" className="currency-btn billes">
+              <span>🔵</span>
+              <span>{stats.billes}</span>
             </Link>
-
-            <div className="flex items-center gap-2">
-              {/* Mode Selector */}
-              <div className="relative">
-                <button
-                  onClick={() => setShowModeSelector(!showModeSelector)}
-                  className="flex items-center gap-3 px-5 py-3 rounded-full transition hover:scale-105"
-                  style={{
-                    background: currentMode.gradient,
-                    boxShadow: `0 0 20px ${currentMode.color}60`,
-                    border: '2px solid rgba(255,255,255,0.3)'
-                  }}
-                >
-                  <span className="text-2xl">{currentMode.icon}</span>
-                  <span className="text-white text-base font-bold">{currentMode.title}</span>
-                  <span className="text-white/80 text-sm">▼</span>
-                </button>
-
-                {/* Dropdown */}
-                {showModeSelector && (
-                  <div className="absolute top-full right-0 mt-2 w-48 bg-[#0D001A] border-2 border-white/15 rounded-lg overflow-hidden z-50" style={{ boxShadow: '0 10px 40px rgba(0,0,0,0.7)' }}>
-                    {Object.values(modesConfig).map(mode => (
-                      <button
-                        key={mode.id}
-                        onClick={() => handleModeChange(mode.id)}
-                        className={`w-full flex items-center gap-3 p-3 text-left transition ${
-                          userData.mode === mode.id ? 'bg-white/10' : 'hover:bg-white/5'
-                        }`}
-                        style={{ borderBottom: '1px solid rgba(255,255,255,0.1)' }}
-                      >
-                        <span
-                          className="w-8 h-8 rounded-lg flex items-center justify-center text-lg"
-                          style={{ background: mode.gradient }}
-                        >
-                          {mode.icon}
-                        </span>
-                        <span className="font-bold" style={{ color: mode.color }}>{mode.title}</span>
-                        {userData.mode === mode.id && <span className="ml-auto text-[#39FF14]">✓</span>}
-                      </button>
-                    ))}
-                    <div className="p-2 text-center text-xs text-white/40">
-                      💡 Change de mode quand tu veux
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              {/* Notifications */}
-              <button className="relative p-2 text-white/60 hover:text-[#FFFF00] transition">
-                <span className="text-2xl">🔔</span>
-                {user.notifications > 0 && (
-                  <span className="absolute -top-1 -right-1 w-5 h-5 bg-[#FF00FF] text-white text-xs font-bold rounded-full flex items-center justify-center animate-pulse">
-                    {user.notifications}
-                  </span>
-                )}
-              </button>
-            </div>
+            <Link href="/boutique" className="currency-btn bonbons">
+              <span>🍬</span>
+              <span>{stats.bonbons}</span>
+            </Link>
           </div>
-
-          {/* Ligne 2: Navigation */}
-          <nav className="max-w-5xl mx-auto">
-            <div className="top-nav">
-              <Link href="/dashboard" className="top-nav-item active">
-                <span className="nav-emoji">🏠</span>
-                Accueil
-              </Link>
-              <Link href="/games/jeu-oie" className="top-nav-item">
-                <span className="nav-emoji">🎲</span>
-                Tirage
-              </Link>
-              <Link href="/games" className="top-nav-item">
-                <span className="nav-emoji">🎮</span>
-                JEUX
-              </Link>
-              <Link href="/messages" className="top-nav-item">
-                <span className="nav-emoji">💬</span>
-                Messages
-              </Link>
-              <Link href="/events" className="top-nav-item" style={{ color: '#FF6600' }}>
-                <span className="nav-emoji">🍻</span>
-                Events
-              </Link>
-              <Link href="/invite" className="top-nav-item">
-                <span className="nav-emoji">👯</span>
-                Inviter
-              </Link>
-              <Link href="/profile" className="top-nav-item">
-                <span className="nav-emoji">👤</span>
-                Profil
-              </Link>
-            </div>
-          </nav>
         </div>
+
+        {/* Navigation */}
+        <nav className="nav-menu">
+          <div className="nav-items">
+            <Link href="/dashboard" className="nav-item active">
+              <span>🏠</span>
+              <span>Accueil</span>
+            </Link>
+            <Link href="/tirage" className="nav-item">
+              <span>🎲</span>
+              <span>Tirage</span>
+            </Link>
+            <Link href="/games" className="nav-item highlight">
+              <span>🎮</span>
+              <span>Jeux</span>
+            </Link>
+            <Link href="/messages" className="nav-item">
+              <span>💬</span>
+              <span>Messages</span>
+            </Link>
+            <Link href="/events" className="nav-item">
+              <span>🍻</span>
+              <span>Events</span>
+            </Link>
+            <Link href="/invite" className="nav-item">
+              <span>👯</span>
+              <span>Inviter</span>
+            </Link>
+            <Link href="/profile" className="nav-item">
+              <span>👤</span>
+              <span>Profil</span>
+            </Link>
+          </div>
+        </nav>
       </header>
 
-      {/* Contenu principal */}
-      <main className="dashboard-main">
+      {/* Spacer pour le header fixe */}
+      <div style={{ height: '130px' }} />
 
-        {/* ========== HERO BLOCK: Mode + Stats ========== */}
-        <div className="hero-block">
-          {/* Titre Mode */}
-          <div className="flex items-center gap-3 mb-2">
-            <span className="text-4xl">{currentMode.icon}</span>
-            <div>
-              <h1 className="text-2xl font-bold text-white" style={{ fontFamily: 'Bangers, cursive', letterSpacing: '2px' }}>
-                Mode {currentMode.title}
-              </h1>
-              <p className="text-white/60">Saison {season.number} • {season.daysLeft} jours restants</p>
-            </div>
+      {/* Marquee banner */}
+      <div className="marquee-container">
+        <div className="marquee">
+          <div className="marquee-content">
+            <span className="marquee-item">🎮 Joue avec tes potes</span>
+            <span className="marquee-item">💕 Rencontre des gens</span>
+            <span className="marquee-item">🎯 Fini les convos chiantes</span>
+            <span className="marquee-item">✨ Sois toi-même</span>
+            <span className="marquee-item">🎠 Jeux d'enfance</span>
+            <span className="marquee-item">💥 Vraies connexions</span>
           </div>
-
-          {/* Stats en 3 colonnes */}
-          <div className="stats-grid">
-            <div className="stat-box">
-              <div className="stat-value">{stats.challenges.done}/{stats.challenges.total}</div>
-              <div className="stat-label">Défis</div>
-            </div>
-            <div className="stat-box">
-              <div className="stat-value">{stats.points}</div>
-              <div className="stat-label">Points</div>
-            </div>
-            <div className="stat-box">
-              <div className="stat-value">#{stats.rank}</div>
-              <div className="stat-label">Rang</div>
-            </div>
+          <div className="marquee-content">
+            <span className="marquee-item">🎮 Joue avec tes potes</span>
+            <span className="marquee-item">💕 Rencontre des gens</span>
+            <span className="marquee-item">🎯 Fini les convos chiantes</span>
+            <span className="marquee-item">✨ Sois toi-même</span>
+            <span className="marquee-item">🎠 Jeux d'enfance</span>
+            <span className="marquee-item">💥 Vraies connexions</span>
           </div>
         </div>
+      </div>
 
-        {/* ========== SECTION JEUX ========== */}
-        <div className="section">
-          <h2 className="section-title">🎮 Jeux disponibles</h2>
+      {/* Hero section */}
+      <section className="hero">
+        {/* Mascotte */}
+        <div className={`mascot ${mounted ? 'fade-in' : 'opacity-0'}`}>🎠</div>
 
-          {/* Liste des jeux avec vraies cartes */}
-          {modeGames.map(game => (
-            <div
-              key={game.id}
-              className="game-card"
-              onClick={() => router.push(game.path)}
-            >
-              <div className="game-icon">{game.icon}</div>
-              <div className="flex-1">
-                <div className="game-title">{game.title}</div>
-                <div className="game-desc">{game.description}</div>
+        {/* Titre néon */}
+        <h1 className={`hero-title ${mounted ? 'fade-in' : 'opacity-0'}`}>
+          C'est toi le chat !
+        </h1>
+
+        {/* Sous-titre */}
+        <p className={`hero-subtitle ${mounted ? 'fade-in-delay-1' : 'opacity-0'}`}>
+          Le terrain de jeu secret des grands enfants
+        </p>
+
+        {/* Boutons */}
+        <div className={`cta-buttons ${mounted ? 'fade-in-delay-1' : 'opacity-0'}`}>
+          <div className="btn-primary-wrapper">
+            <Link href="/games" className="btn-primary">
+              🎮 ALLER À LA RÉCRÉ !
+            </Link>
+          </div>
+          <div className="btn-secondary-wrapper">
+            <Link href="/invite" className="btn-secondary">
+              👯 INVITER MES POTES
+            </Link>
+          </div>
+          <p className="invite-hint">+10 billes par ami invité !</p>
+        </div>
+
+        {/* Stats */}
+        <div className={`stats-row ${mounted ? 'fade-in-delay-2' : 'opacity-0'}`}>
+          <Link href="/collection" className="stat-card" style={{ textDecoration: 'none' }}>
+            <div className="stat-number">🔵 {stats.billes}</div>
+            <div className="stat-label">Billes</div>
+          </Link>
+          <Link href="/boutique" className="stat-card" style={{ textDecoration: 'none' }}>
+            <div className="stat-number">🍬 {stats.bonbons}</div>
+            <div className="stat-label">Bonbons</div>
+          </Link>
+        </div>
+
+        {/* Lien */}
+        <Link href="/games/history" className={`recre-link ${mounted ? 'fade-in-delay-3' : 'opacity-0'}`}>
+          Voir mes dernières récrés →
+        </Link>
+
+        {/* Section Anniversaires */}
+        {(mockBirthdays.today.length > 0 || mockBirthdays.thisWeek.length > 0) && (
+          <div className={`birthday-section ${mounted ? 'fade-in-delay-3' : 'opacity-0'}`}>
+            <div className="birthday-header">
+              <span style={{ fontSize: '2rem' }}>🎂</span>
+              <h2 className="birthday-title">ANNIVERSAIRES</h2>
+            </div>
+            <p className="birthday-subtitle">"Pour que personne soit oublié"</p>
+
+            {/* Anniversaires aujourd'hui */}
+            {mockBirthdays.today.length > 0 && (
+              <div>
+                <h3 className="birthday-group-title">
+                  <span>🎈</span> Aujourd'hui
+                </h3>
+                {mockBirthdays.today.map(person => (
+                  <div key={person.id} className="birthday-card">
+                    <div className="birthday-avatar">{person.avatar}</div>
+                    <div className="birthday-info">
+                      <div className="birthday-name">
+                        {person.pseudo} fête ses <span className="birthday-age">{person.age} ans</span> !
+                      </div>
+                    </div>
+                    <div className="birthday-actions">
+                      {wishedToday[person.id] ? (
+                        <div className="wish-sent-badge">
+                          ✓ Envoyé !
+                        </div>
+                      ) : showWishSent === person.id ? (
+                        <div className="wish-sent-badge">
+                          🎉 Envoyé !
+                        </div>
+                      ) : (
+                        <>
+                          <button
+                            className="birthday-btn bille"
+                            onClick={() => handleSendWish(person.id, 'bille')}
+                          >
+                            <span>🔵</span> Bille
+                          </button>
+                          <button
+                            className="birthday-btn bonbon"
+                            onClick={() => handleSendWish(person.id, 'bonbon')}
+                          >
+                            <span>🍬</span> Bonbon
+                          </button>
+                          <button
+                            className="birthday-btn simple"
+                            onClick={() => handleSendWish(person.id, 'simple')}
+                          >
+                            <span>🎉</span> Souhaiter
+                          </button>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                ))}
               </div>
-              {game.isNew ? (
-                <span className="game-badge badge-new">NEW</span>
-              ) : (
-                <span className="game-badge badge-points">+{game.points} pts</span>
-              )}
-            </div>
-          ))}
-        </div>
+            )}
 
-        {/* ========== SECTION BIENTÔT ========== */}
-        <div className="section">
-          <h2 className="section-title">🔒 Bientôt disponibles</h2>
-
-          <div className="flex gap-4">
-            {upcomingGames.map(game => (
-              <div
-                key={game.id}
-                className="text-center opacity-40"
-                style={{
-                  background: 'rgba(255,255,255,0.05)',
-                  padding: '20px',
-                  borderRadius: '12px',
-                  flex: 1
-                }}
-              >
-                <div className="text-3xl mb-2 grayscale">{game.icon}</div>
-                <div className="text-xs text-white/60">{game.title}</div>
-                <div className="text-[10px] text-white/40 mt-1">Sem. {game.unlockWeek}</div>
+            {/* Anniversaires cette semaine */}
+            {mockBirthdays.thisWeek.length > 0 && (
+              <div style={{ marginTop: mockBirthdays.today.length > 0 ? '24px' : '0' }}>
+                <h3 className="birthday-group-title">
+                  <span>📅</span> Cette semaine
+                </h3>
+                {mockBirthdays.thisWeek.map(person => (
+                  <div key={person.id} className="birthday-week-item">
+                    <span className="birthday-week-avatar">{person.avatar}</span>
+                    <div className="birthday-week-info">
+                      <div className="birthday-week-name">{person.pseudo}</div>
+                      <div className="birthday-week-date">{person.date}</div>
+                    </div>
+                  </div>
+                ))}
               </div>
-            ))}
-          </div>
-        </div>
+            )}
 
-        {/* ========== SECTION INVITE ========== */}
-        <div className="section">
-          <div
-            className="game-card"
-            onClick={() => router.push('/invite')}
-            style={{ borderColor: 'rgba(255, 0, 255, 0.5)' }}
-          >
-            <div className="game-icon">👯</div>
-            <div className="flex-1">
-              <div className="game-title">Invite tes potes !</div>
-              <div className="game-desc">+1 semaine Premium par ami invité</div>
+            <Link href="/birthdays" className="birthday-view-all">
+              Voir tous les anniversaires →
+            </Link>
+          </div>
+        )}
+      </section>
+
+      {/* Modal Anniversaire (quand c'est MON anniversaire) */}
+      {showBirthdayModal && mockMyBirthdayWishes.isMyBirthday && (
+        <div className="birthday-modal-overlay" onClick={() => setShowBirthdayModal(false)}>
+          <div className="birthday-modal" onClick={e => e.stopPropagation()}>
+            <div className="birthday-modal-emoji">🎂</div>
+            <h2 className="birthday-modal-title">🎉 JOYEUX ANNIVERSAIRE !</h2>
+            <p className="birthday-modal-count">
+              <strong>{mockMyBirthdayWishes.wishCount} personnes</strong> te souhaitent<br />
+              ton anniversaire !
+            </p>
+            <div className="birthday-modal-balloons">
+              🎈🎈🎈🎈🎈🎈🎈🎈🎈🎈🎈🎈
             </div>
-            <span style={{ fontSize: '1.5rem', color: 'rgba(255,255,255,0.4)' }}>→</span>
+            <p className="birthday-modal-senders">
+              {mockMyBirthdayWishes.wishes.slice(0, 3).map(w => w.sender).join(', ')} et {mockMyBirthdayWishes.wishCount - 3} autres
+            </p>
+            <div className="birthday-modal-gifts">
+              <div className="birthday-modal-gifts-title">🎁 Tu as aussi reçu :</div>
+              <div className="birthday-modal-gift-item">
+                <span>• {mockMyBirthdayWishes.totalBonbons} bonbons</span>
+                <span>🍬</span>
+              </div>
+              <div className="birthday-modal-gift-item">
+                <span>• {mockMyBirthdayWishes.totalBilles} billes</span>
+                <span>🔵</span>
+              </div>
+            </div>
+            <Link href="/birthday-wishes" className="birthday-modal-btn" onClick={() => setShowBirthdayModal(false)}>
+              VOIR TOUS LES MESSAGES
+            </Link>
           </div>
         </div>
-
-        {/* ========== COACH TIP ========== */}
-        <div
-          style={{
-            background: 'rgba(255,255,255,0.03)',
-            borderRadius: '12px',
-            padding: '20px',
-            display: 'flex',
-            gap: '12px',
-            alignItems: 'flex-start'
-          }}
-        >
-          <span className="text-2xl">💡</span>
-          <p className="text-white/50 text-sm leading-relaxed">
-            {userData.mode === 'love' && 'Commence par le Manège pour découvrir des personnalités compatibles !'}
-            {userData.mode === 'friends' && 'Lance-toi dans Action ou Vérité avec des inconnus pour briser la glace !'}
-            {userData.mode === 'crew' && 'Rejoins ou crée un event IRL ! Les jeux brise-glace sont prévus sur place.'}
-          </p>
-        </div>
-
-      </main>
+      )}
     </div>
   )
 }

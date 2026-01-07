@@ -30,7 +30,7 @@ const modes: ModeConfig[] = [
     color: '#FF00FF',
     gradient: 'linear-gradient(135deg, #FF00FF 0%, #FF6B9D 100%)',
     games: ['Le Manège', 'La Marelle', 'Poésie', 'Dirty Dancing'],
-    features: ['Coach Love personnalisé', 'Profils compatibles mis en avant', 'Jeux romantiques exclusifs'],
+    features: ['Profils compatibles mis en avant', 'Jeux romantiques exclusifs', 'Bonbons à envoyer à tes crushs'],
   },
   {
     id: 'friends',
@@ -100,7 +100,7 @@ export default function OnboardingPage() {
         setAgeError('')
         setStep('mode')
       } else if (userAge !== null && userAge < 21) {
-        setAgeError('GameCrush est reserve aux 21 ans et plus.')
+        setAgeError('Déli Délo est reserve aux 21 ans et plus.')
       }
     } else if (step === 'mode' && selectedMode) {
       setStep('profile')
@@ -206,7 +206,7 @@ export default function OnboardingPage() {
         <div className="text-center">
           <Link href="/" className="logo-90s text-2xl inline-block">
             <span className="animate-spin inline-block text-xl mr-2">🎠</span>
-            GameCrush
+            Déli Délo
           </Link>
         </div>
       </header>
@@ -280,7 +280,7 @@ export default function OnboardingPage() {
                 Verification d'age
               </h2>
               <p className="text-white/60">
-                GameCrush est reserve aux <span className="text-[#FFFF00] font-bold">21 ans et plus</span>.
+                Déli Délo est reserve aux <span className="text-[#FFFF00] font-bold">21 ans et plus</span>.
               </p>
             </div>
 
@@ -353,7 +353,7 @@ export default function OnboardingPage() {
               </p>
               <p className="text-white/40 text-xs mt-2">
                 Pour garantir un public mature et des echanges de qualite.
-                C'est ce qui fait la difference GameCrush.
+                C'est ce qui fait la difference Déli Délo.
               </p>
             </div>
           </div>
@@ -559,7 +559,7 @@ export default function OnboardingPage() {
                   <span className="text-3xl">💬</span>
                   <div className="text-left">
                     <h4 className="text-white font-bold text-sm mb-2">Reste sur l'app</h4>
-                    <p className="text-white/50 text-xs">Discute uniquement sur GameCrush. On peut t'aider en cas de souci.</p>
+                    <p className="text-white/50 text-xs">Discute uniquement sur Déli Délo. On peut t'aider en cas de souci.</p>
                   </div>
                 </div>
               </div>

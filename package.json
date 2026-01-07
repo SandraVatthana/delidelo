@@ -1,5 +1,5 @@
 {
-  "name": "gamecrush",
+  "name": "delidelo",
   "version": "0.1.0",
   "private": true,
   "scripts": {
@@ -23,6 +23,7 @@
     "zustand": "^5.0.9"
   },
   "devDependencies": {
+    "@netlify/plugin-nextjs": "^5.15.3",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
     "@types/react": "^19",

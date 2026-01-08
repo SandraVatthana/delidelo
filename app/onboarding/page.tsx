@@ -235,10 +235,10 @@ export default function OnboardingPage() {
               Bienvenue !
             </h1>
             <p className="text-white/80 text-lg mb-8 max-w-md">
-              Ici, on ne commence pas par "Salut ça va ?",
+              Et si on jouait ?
               <br />
               <span className="text-[#FFFF00] font-bold" style={{ textShadow: '0 0 10px #FFFF00' }}>
-                on commence par un jeu.
+                Ne le dites pas à vos enfants.
               </span>
             </p>
 
@@ -257,13 +257,13 @@ export default function OnboardingPage() {
                 </li>
                 <li className="flex flex-col items-center gap-2">
                   <span className="text-3xl">💕</span>
-                  <span>Tu matches avec ceux qui te correspondent vraiment</span>
+                  <span>Joue avec tes proches ou matche avec de nouveaux amis</span>
                 </li>
               </ul>
             </div>
 
             <p className="text-white/50 text-sm mb-6">
-              Moins de swipes, plus de vraies vibes.
+              Interdit de se prendre au sérieux.
             </p>
           </div>
         )}

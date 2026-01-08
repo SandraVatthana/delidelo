@@ -1166,7 +1166,7 @@ export default function DashboardPage() {
       {/* Hero section */}
       <section className="hero">
         {/* Mascotte */}
-        <div className={`mascot ${mounted ? 'fade-in' : 'opacity-0'}`}>🎠</div>
+        <div className={`mascot ${mounted ? 'fade-in' : 'opacity-0'}`}>🐱</div>
 
         {/* Titre néon */}
         <h1 className={`hero-title ${mounted ? 'fade-in' : 'opacity-0'}`}>
@@ -1175,7 +1175,7 @@ export default function DashboardPage() {
 
         {/* Sous-titre */}
         <p className={`hero-subtitle ${mounted ? 'fade-in-delay-1' : 'opacity-0'}`}>
-          Le terrain de jeu secret des grands enfants
+          La récré durait 15 minutes. La vie d'adulte dure 80 piges.
         </p>
 
         {/* Boutons */}

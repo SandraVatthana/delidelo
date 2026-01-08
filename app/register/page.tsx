@@ -312,7 +312,7 @@ export default function RegisterPage() {
                       value={pseudo}
                       onChange={(e) => setPseudo(e.target.value.replace(/[^a-zA-Z0-9_]/g, ''))}
                       className="input-90s"
-                      placeholder="PlayerOne"
+                      placeholder="Ton pseudo..."
                       maxLength={20}
                       required
                       disabled={isLoading}

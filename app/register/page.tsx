@@ -53,10 +53,70 @@ export default function RegisterPage() {
 
     setIsLoading(true)
 
-    // Simulation - en prod, utiliser Supabase
-    setTimeout(() => {
-      router.push('/onboarding')
-    }, 1000)
+    // Mode démo
+    if (demoMode) {
+      localStorage.setItem('userPseudo', pseudo)
+      localStorage.setItem('onboardingComplete', 'false')
+      setTimeout(() => {
+        router.push('/onboarding')
+      }, 500)
+      return
+    }
+
+    // Production: Supabase
+    const supabase = getSupabaseClient()
+    if (!supabase) {
+      setError('Configuration Supabase manquante')
+      setIsLoading(false)
+      return
+    }
+
+    try {
+      // 1. Créer le compte auth
+      const { data: authData, error: authError } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: { pseudo }
+        }
+      })
+
+      if (authError) {
+        if (authError.message.includes('already registered')) {
+          setError('Cet email est déjà utilisé')
+        } else {
+          setError(authError.message)
+        }
+        setIsLoading(false)
+        return
+      }
+
+      if (authData.user) {
+        // 2. Créer le profil utilisateur
+        const { error: profileError } = await supabase
+          .from('user_profiles')
+          .insert({
+            id: authData.user.id,
+            pseudo,
+            bonbons: 10,
+            billes: 0
+          })
+
+        if (profileError) {
+          console.error('Profile creation error:', profileError)
+        }
+
+        // Sauvegarder le pseudo localement
+        localStorage.setItem('userPseudo', pseudo)
+
+        // Rediriger vers onboarding
+        router.push('/onboarding')
+      }
+    } catch (err) {
+      console.error('Registration error:', err)
+      setError('Une erreur est survenue. Réessaie.')
+      setIsLoading(false)
+    }
   }
 
   const nextStep = () => {

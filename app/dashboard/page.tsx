@@ -1175,7 +1175,7 @@ export default function DashboardPage() {
 
         {/* Sous-titre */}
         <p className={`hero-subtitle ${mounted ? 'fade-in-delay-1' : 'opacity-0'}`}>
-          La récré durait 15 minutes. La vie d'adulte dure 80 piges.
+          Le terrain de jeu secret des grands enfants
         </p>
 
         {/* Boutons */}

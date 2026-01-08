@@ -69,7 +69,7 @@ const defaultUser: UserData = {
   city: '',
   mode: 'love',
   onboardingComplete: false,
-  billes: 0,
+  billes: 10,
   bonbons: 10,
   isPremium: false,
   premiumUntil: null,

@@ -778,19 +778,34 @@
             }
 
             .hero-title {
-                font-size: 3rem;
+                font-size: 2.2rem;
             }
 
             .hero-subtitle {
-                font-size: 1.1rem;
+                font-size: 1rem;
+                padding: 0 15px;
+            }
+
+            .hero-subtitle-small {
+                font-size: 0.9rem;
+            }
+
+            .hero-cta {
+                flex-direction: column;
+                gap: 15px;
+            }
+
+            .hero-stats {
+                flex-direction: column;
+                gap: 15px;
             }
 
             .section-title {
-                font-size: 2.5rem;
+                font-size: 1.8rem;
             }
 
             .slogan {
-                font-size: 2rem;
+                font-size: 1.5rem;
             }
 
             .special-feature::before {
@@ -799,6 +814,36 @@
 
             .invite-demo {
                 padding: 0 10px;
+            }
+
+            /* Grids en colonne sur mobile */
+            [style*="grid-template-columns: 1fr 1fr"] {
+                grid-template-columns: 1fr !important;
+            }
+
+            [style*="grid-template-columns: repeat(3"] {
+                grid-template-columns: 1fr !important;
+            }
+
+            [style*="grid-template-columns: repeat(4"] {
+                grid-template-columns: repeat(2, 1fr) !important;
+            }
+
+            .section {
+                padding: 40px 15px !important;
+            }
+
+            .logo {
+                font-size: 1.8rem;
+            }
+
+            .logo-icon {
+                font-size: 1.5rem;
+            }
+
+            .btn-cta-primary, .btn-cta-secondary {
+                padding: 14px 24px;
+                font-size: 1rem;
             }
         }
 
@@ -922,7 +967,7 @@
         <div class="header-inner">
             <a href="#" class="logo">
                 <span class="logo-icon">🎠</span>
-                À la déli délo
+                Déli Délo
             </a>
             <nav>
                 <ul class="nav-links">
@@ -1003,9 +1048,9 @@
         </div>
     </section>
 
-    <!-- POURQUOI À LA DÉLI DÉLO -->
+    <!-- POURQUOI DÉLI DÉLO -->
     <section class="section" style="padding: 60px 20px;">
-        <h2 class="section-title" style="font-size: 2.5rem;">Pourquoi À la déli délo ?</h2>
+        <h2 class="section-title" style="font-size: 2.5rem;">Pourquoi Déli Délo ?</h2>
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 40px; max-width: 900px; margin: 40px auto 0;">
             <!-- Les autres apps -->
             <div style="background: rgba(255, 49, 49, 0.1); border: 3px solid var(--neon-red); padding: 30px;">
@@ -1022,9 +1067,9 @@
                     </li>
                 </ul>
             </div>
-            <!-- À la déli délo -->
+            <!-- Déli Délo -->
             <div style="background: rgba(57, 255, 20, 0.1); border: 3px solid var(--neon-green); padding: 30px;">
-                <h3 style="font-family: 'Bangers', cursive; font-size: 1.5rem; color: var(--neon-green); margin-bottom: 20px; text-shadow: 0 0 10px var(--neon-green);">✅ À la déli délo</h3>
+                <h3 style="font-family: 'Bangers', cursive; font-size: 1.5rem; color: var(--neon-green); margin-bottom: 20px; text-shadow: 0 0 10px var(--neon-green);">✅ Déli Délo</h3>
                 <ul style="list-style: none; text-align: left;">
                     <li style="padding: 10px 0; border-bottom: 1px solid rgba(255,255,255,0.1); font-weight: 700;">
                         <span style="color: var(--neon-green);">✅</span> Tu joues → tu te marres → tu connectes (ou pas, mais au moins t'as rigolé)
@@ -1483,7 +1528,7 @@
 
     <!-- FOOTER -->
     <footer class="footer">
-        <div class="footer-brand">🎠 À la déli délo</div>
+        <div class="footer-brand">🎠 Déli Délo</div>
         <p class="footer-text">Joue. Rencontre. Connecte.</p>
         <p class="footer-text">Made with 💕 in France</p>
         <div class="footer-icons">
@@ -1501,7 +1546,7 @@
         </div>
         <!-- Disclaimer -->
         <p style="margin-top: 40px; font-size: 0.7rem; color: rgba(255,255,255,0.4); max-width: 600px; margin-left: auto; margin-right: auto;">
-            Tinder et Bumble sont des marques déposées de leurs propriétaires respectifs. À la déli délo n'est pas affilié à ces services.
+            Tinder et Bumble sont des marques déposées de leurs propriétaires respectifs. Déli Délo n'est pas affilié à ces services.
         </p>
     </footer>
 

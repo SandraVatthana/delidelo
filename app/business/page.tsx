@@ -126,7 +126,7 @@ export default function BusinessPage() {
       {/* Header minimal */}
       <header className="py-4">
         <div className="page-container flex items-center justify-between">
-          <Link href="/" className="text-white/50 hover:text-white transition text-sm">
+          <Link href="/games" className="text-white/50 hover:text-white transition text-sm">
             ← Retour
           </Link>
           <span className="text-xl">🍽️</span>

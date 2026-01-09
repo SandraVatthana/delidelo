@@ -235,6 +235,37 @@ export default function GamesPage() {
           </p>
         </div>
 
+        {/* Banner Récré Business */}
+        <Link
+          href="/business"
+          className="block mb-24 p-6 rounded-xl transition hover:scale-[1.02]"
+          style={{
+            background: 'linear-gradient(135deg, rgba(255, 0, 255, 0.15), rgba(0, 255, 255, 0.1))',
+            border: '2px solid rgba(255, 0, 255, 0.4)',
+            boxShadow: '0 0 20px rgba(255, 0, 255, 0.2)'
+          }}
+        >
+          <div className="flex items-center gap-4">
+            <span className="text-4xl">🍽️</span>
+            <div className="flex-1">
+              <h3
+                className="text-xl font-bold mb-1"
+                style={{
+                  fontFamily: 'Bangers, cursive',
+                  color: '#FF00FF',
+                  textShadow: '0 0 10px rgba(255, 0, 255, 0.5)'
+                }}
+              >
+                RÉCRÉ BUSINESS
+              </h3>
+              <p className="text-white/70 text-sm">
+                Organise des dîners networking fun avec tes collègues ou partenaires !
+              </p>
+            </div>
+            <span className="text-white/50 text-2xl">→</span>
+          </div>
+        </Link>
+
         {/* Catégories de jeux */}
         {gameCategories.map(category => (
           <div key={category.id} className="mb-10">

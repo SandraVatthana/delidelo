@@ -6,11 +6,10 @@ import { useRouter } from 'next/navigation'
 
 export default function BusinessPage() {
   const router = useRouter()
-  const [selectedKit, setSelectedKit] = useState<'standard' | 'surprise'>('standard')
   const [openFaq, setOpenFaq] = useState<number | null>(null)
 
-  const handlePurchase = (kit?: 'standard' | 'surprise') => {
-    router.push(`/business/new?kit=${kit || selectedKit}`)
+  const handleStart = () => {
+    router.push('/business/new')
   }
 
   const faqs = [
@@ -48,23 +47,6 @@ export default function BusinessPage() {
         .btn-primary:hover {
           transform: scale(1.05);
           box-shadow: 0 0 40px rgba(255, 0, 255, 0.5);
-        }
-
-        .pricing-card {
-          background: rgba(255, 255, 255, 0.03);
-          border: 2px solid rgba(255, 255, 255, 0.1);
-          border-radius: 20px;
-          padding: 2rem;
-          transition: all 0.3s ease;
-          cursor: pointer;
-          flex: 1;
-        }
-        .pricing-card:hover {
-          border-color: rgba(255, 0, 255, 0.4);
-        }
-        .pricing-card.selected {
-          border-color: #FF00FF;
-          box-shadow: 0 0 30px rgba(255, 0, 255, 0.2);
         }
 
         .faq-item {
@@ -171,8 +153,8 @@ export default function BusinessPage() {
           >
             "Le networking sans le malaise"
           </p>
-          <button onClick={() => handlePurchase('standard')} className="btn-primary">
-            Créer ma Récré — 29€
+          <button onClick={handleStart} className="btn-primary">
+            Créer ma Récré
           </button>
         </div>
       </section>
@@ -186,21 +168,16 @@ export default function BusinessPage() {
           <div className="flex justify-center items-start gap-8 md:gap-16 flex-wrap">
             <div className="step-item">
               <span className="step-number">1.</span>
-              <span className="step-icon">💳</span>
-              <span className="step-label">Achetez</span>
-            </div>
-            <div className="step-item">
-              <span className="step-number">2.</span>
               <span className="step-icon">📝</span>
               <span className="step-label">Configurez</span>
             </div>
             <div className="step-item">
-              <span className="step-number">3.</span>
+              <span className="step-number">2.</span>
               <span className="step-icon">📤</span>
               <span className="step-label">Invitez</span>
             </div>
             <div className="step-item">
-              <span className="step-number">4.</span>
+              <span className="step-number">3.</span>
               <span className="step-icon">🎉</span>
               <span className="step-label">Jouez</span>
             </div>
@@ -235,79 +212,7 @@ export default function BusinessPage() {
         </div>
       </section>
 
-      {/* SECTION 4: TARIFS */}
-      <section>
-        <div className="page-container">
-          <div className="flex flex-col md:flex-row gap-6 justify-center">
-            {/* Standard */}
-            <div
-              className={`pricing-card ${selectedKit === 'standard' ? 'selected' : ''}`}
-              onClick={() => setSelectedKit('standard')}
-            >
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-bold text-white">STANDARD</h3>
-                {selectedKit === 'standard' && <span className="text-[#39FF14]">✓</span>}
-              </div>
-              <div
-                className="text-4xl font-bold mb-6"
-                style={{ color: '#FF00FF', textShadow: '0 0 15px rgba(255, 0, 255, 0.5)' }}
-              >
-                29€
-              </div>
-              <ul className="space-y-2 text-white/70 text-sm mb-6">
-                <li>✓ 4 jeux interactifs</li>
-                <li>✓ Jusqu'à 12 participants</li>
-                <li>✓ Récap contacts</li>
-              </ul>
-              <button
-                onClick={(e) => { e.stopPropagation(); handlePurchase('standard') }}
-                className="w-full py-3 rounded-lg font-bold transition"
-                style={{
-                  background: selectedKit === 'standard' ? 'linear-gradient(135deg, #FF00FF, #FF6B9D)' : 'rgba(255, 255, 255, 0.1)',
-                  color: 'white'
-                }}
-              >
-                Choisir
-              </button>
-            </div>
-
-            {/* Surprise */}
-            <div
-              className={`pricing-card ${selectedKit === 'surprise' ? 'selected' : ''}`}
-              onClick={() => setSelectedKit('surprise')}
-            >
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-bold text-white">+ SURPRISE</h3>
-                {selectedKit === 'surprise' && <span className="text-[#39FF14]">✓</span>}
-              </div>
-              <div
-                className="text-4xl font-bold mb-6"
-                style={{ color: '#FF00FF', textShadow: '0 0 15px rgba(255, 0, 255, 0.5)' }}
-              >
-                49€
-              </div>
-              <ul className="space-y-2 text-white/70 text-sm mb-6">
-                <li>✓ 4 jeux interactifs</li>
-                <li>✓ Jusqu'à 12 participants</li>
-                <li>✓ Récap contacts</li>
-                <li className="text-[#FFD700]">✓ Cadeau marque partenaire</li>
-              </ul>
-              <button
-                onClick={(e) => { e.stopPropagation(); handlePurchase('surprise') }}
-                className="w-full py-3 rounded-lg font-bold transition"
-                style={{
-                  background: selectedKit === 'surprise' ? 'linear-gradient(135deg, #FF00FF, #FF6B9D)' : 'rgba(255, 255, 255, 0.1)',
-                  color: 'white'
-                }}
-              >
-                Choisir
-              </button>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* SECTION 5: TÉMOIGNAGES */}
+      {/* SECTION 4: TÉMOIGNAGES */}
       <section style={{ background: 'rgba(255, 255, 255, 0.02)' }}>
         <div className="page-container">
           <div className="flex flex-col md:flex-row justify-center gap-8 md:gap-12">
@@ -327,7 +232,7 @@ export default function BusinessPage() {
         </div>
       </section>
 
-      {/* SECTION 6: FAQ */}
+      {/* SECTION 5: FAQ */}
       <section>
         <div className="page-container">
           <div className="space-y-3 max-w-xl mx-auto">
@@ -363,7 +268,7 @@ export default function BusinessPage() {
           >
             Prêt à révolutionner vos soirées ?
           </p>
-          <button onClick={() => handlePurchase()} className="btn-primary">
+          <button onClick={handleStart} className="btn-primary">
             Créer ma Récré Business
           </button>
         </div>

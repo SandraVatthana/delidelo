@@ -52,7 +52,7 @@ const gameCategories = [
       { id: 'temple', icon: '🗿', title: 'Le Temple Maudit', desc: 'Indiana Jones style', available: true, path: '/games/temple', isNew: true, color: 'orange', isPremium: true },
       { id: 'goonies', icon: '🏴‍☠️', title: 'Les Goonies', desc: 'Chasse au trésor', available: true, path: '/games/goonies', isNew: true, color: 'yellow', isPremium: true },
       { id: 'point-break', icon: '🏄', title: 'Point Break', desc: 'Choix extrêmes', available: true, path: '/games/point-break', isNew: true, color: 'red', isPremium: true },
-      { id: 'dirty', icon: '💃', title: 'Dirty Dancing', desc: 'Vidéos chorés kitsch', available: true, path: '/games/dirty', isNew: true, color: 'pink', isPremium: true },
+      { id: 'dirty', icon: '💃', title: 'Dirty Dancing', desc: 'Vidéos chorés kitsch', available: false, path: '/games/dirty', isNew: true, color: 'pink', isPremium: true },
     ]
   },
   {

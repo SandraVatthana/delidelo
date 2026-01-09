@@ -135,7 +135,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
         const age = localStorage.getItem('userAge')
         const city = localStorage.getItem('userCity')
         const onboardingComplete = localStorage.getItem('onboardingComplete') === 'true'
-        const billes = parseInt(localStorage.getItem('userBilles') || '0', 10)
+        const billes = parseInt(localStorage.getItem('userBilles') || '10', 10)
         const bonbons = parseInt(localStorage.getItem('userBonbons') || '10', 10)
         const bio = localStorage.getItem('userBio') || ''
         const avatar = localStorage.getItem('userAvatar') || '👤'

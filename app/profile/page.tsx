@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useUser } from '../contexts/UserContext'
@@ -25,24 +25,31 @@ export default function ProfilePage() {
   const [isEditing, setIsEditing] = useState(false)
   const [showSettings, setShowSettings] = useState(false)
   const [showAvatarPicker, setShowAvatarPicker] = useState(false)
+  const [isUploading, setIsUploading] = useState(false)
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   // Données utilisateur avec nouveaux champs
-  const [profileData, setProfileData] = useState({
-    pseudo: userData.pseudo || 'Player123',
-    avatar: userData.avatar || '👤',
-    avatarType: 'emoji' as 'emoji' | 'photo',
-    photoUrl: '',
-    age: parseInt(userData.age) || 25,
-    city: userData.city || 'Paris',
-    bio: userData.bio || '',
-    intentions: ['love', 'friends'],
-    idealEvening: 'boardgames',
-    childhoodGame: 'Mario Kart',
-    threeWords: ['curieux', 'drôle', 'créatif'],
-    // Nouveaux champs
-    isCelib: true,
-    showLocation: false,
-    visibleGameResults: ['bonbon_totem', 'red_flag'],
+  const [profileData, setProfileData] = useState(() => {
+    // Charger la photo depuis localStorage si elle existe
+    const savedPhoto = typeof window !== 'undefined' ? localStorage.getItem('userPhotoUrl') : null
+    const savedAvatarType = typeof window !== 'undefined' ? localStorage.getItem('userAvatarType') : null
+
+    return {
+      pseudo: userData.pseudo || 'Player123',
+      avatar: userData.avatar || '👤',
+      avatarType: (savedAvatarType as 'emoji' | 'photo') || 'emoji',
+      photoUrl: savedPhoto || '',
+      age: parseInt(userData.age) || 25,
+      city: userData.city || 'Paris',
+      bio: userData.bio || '',
+      intentions: ['love', 'friends'],
+      idealEvening: 'boardgames',
+      childhoodGame: 'Mario Kart',
+      threeWords: ['curieux', 'drôle', 'créatif'],
+      isCelib: true,
+      showLocation: false,
+      visibleGameResults: ['bonbon_totem', 'red_flag'],
+    }
   })
   const [isEditingBio, setIsEditingBio] = useState(false)
   const [tempBio, setTempBio] = useState(userData.bio || '')
@@ -89,6 +96,49 @@ export default function ProfilePage() {
         ? prev.visibleGameResults.filter(id => id !== resultId)
         : [...prev.visibleGameResults, resultId]
     }))
+  }
+
+  // Handler pour l'upload de photo
+  const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    // Vérifier le type de fichier
+    if (!file.type.startsWith('image/')) {
+      alert('Seules les images sont acceptées (JPG, PNG, GIF)')
+      return
+    }
+
+    // Vérifier la taille (max 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      alert('L\'image est trop lourde (max 5 MB)')
+      return
+    }
+
+    setIsUploading(true)
+
+    const reader = new FileReader()
+    reader.onload = (event) => {
+      const base64 = event.target?.result as string
+
+      // Sauvegarder dans localStorage (pour le mode démo)
+      localStorage.setItem('userPhotoUrl', base64)
+      localStorage.setItem('userAvatarType', 'photo')
+
+      setProfileData(prev => ({
+        ...prev,
+        photoUrl: base64,
+        avatarType: 'photo'
+      }))
+
+      setIsUploading(false)
+      setShowAvatarPicker(false)
+    }
+    reader.onerror = () => {
+      alert('Erreur lors de la lecture du fichier')
+      setIsUploading(false)
+    }
+    reader.readAsDataURL(file)
   }
 
   return (
@@ -207,6 +257,12 @@ export default function ProfilePage() {
           >
             {profileData.avatarType === 'emoji' ? (
               profileData.avatar
+            ) : profileData.photoUrl ? (
+              <img
+                src={profileData.photoUrl}
+                alt="Photo de profil"
+                className="w-full h-full object-cover"
+              />
             ) : (
               <div className="w-full h-full bg-gradient-to-br from-[#FF00FF] to-[#00FFFF] flex items-center justify-center text-white text-2xl">
                 📷
@@ -554,6 +610,15 @@ export default function ProfilePage() {
               </button>
             </div>
 
+            {/* Input fichier caché */}
+            <input
+              type="file"
+              ref={fileInputRef}
+              accept="image/*"
+              onChange={handlePhotoUpload}
+              className="hidden"
+            />
+
             {profileData.avatarType === 'emoji' ? (
               <div className="grid grid-cols-5 gap-3">
                 {avatarOptions.map(emoji => (
@@ -561,6 +626,7 @@ export default function ProfilePage() {
                     key={emoji}
                     onClick={() => {
                       setProfileData(prev => ({ ...prev, avatar: emoji }))
+                      localStorage.setItem('userAvatarType', 'emoji')
                       setShowAvatarPicker(false)
                     }}
                     className="text-4xl p-3 rounded-xl transition hover:scale-110"
@@ -575,16 +641,56 @@ export default function ProfilePage() {
               </div>
             ) : (
               <div className="text-center py-8">
-                <div className="w-24 h-24 mx-auto mb-4 rounded-full bg-gradient-to-br from-[#FF00FF] to-[#00FFFF] flex items-center justify-center text-4xl">
-                  📷
+                {/* Aperçu de la photo actuelle ou placeholder */}
+                <div className="w-24 h-24 mx-auto mb-4 rounded-full overflow-hidden flex items-center justify-center text-4xl"
+                  style={{ background: profileData.photoUrl ? 'transparent' : 'linear-gradient(135deg, #FF00FF, #00FFFF)' }}
+                >
+                  {profileData.photoUrl ? (
+                    <img
+                      src={profileData.photoUrl}
+                      alt="Photo actuelle"
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    '📷'
+                  )}
                 </div>
-                <p className="text-white/60 mb-4">Upload ta photo de profil</p>
-                <button className="px-6 py-3 rounded-lg font-bold" style={{ background: '#FF00FF', color: 'white' }}>
-                  Choisir une photo
-                </button>
-                <p className="text-xs text-white/40 mt-4">
-                  Ta photo sera visible par les autres joueurs
+
+                <p className="text-white/60 mb-4">
+                  {profileData.photoUrl ? 'Changer ta photo' : 'Upload ta photo de profil'}
                 </p>
+
+                <button
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={isUploading}
+                  className="px-6 py-3 rounded-lg font-bold transition hover:scale-105 disabled:opacity-50"
+                  style={{ background: '#FF00FF', color: 'white' }}
+                >
+                  {isUploading ? (
+                    <span className="flex items-center gap-2">
+                      <span className="animate-spin">⏳</span> Upload en cours...
+                    </span>
+                  ) : (
+                    '📷 Choisir une photo'
+                  )}
+                </button>
+
+                <p className="text-xs text-white/40 mt-4">
+                  JPG, PNG ou GIF - Max 5 MB
+                </p>
+
+                {profileData.photoUrl && (
+                  <button
+                    onClick={() => {
+                      localStorage.removeItem('userPhotoUrl')
+                      setProfileData(prev => ({ ...prev, photoUrl: '', avatarType: 'emoji' }))
+                      localStorage.setItem('userAvatarType', 'emoji')
+                    }}
+                    className="mt-3 text-sm text-[#FF3131] hover:underline"
+                  >
+                    Supprimer la photo
+                  </button>
+                )}
               </div>
             )}
 

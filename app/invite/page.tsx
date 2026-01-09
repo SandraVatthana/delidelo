@@ -21,8 +21,8 @@ export default function InvitePage() {
     // Pour Instagram, Snapchat, TikTok : copier le texte et ouvrir l'app
     if (['instagram', 'snapchat', 'tiktok'].includes(platform)) {
       await navigator.clipboard.writeText(message)
-      alert('📋 Message copié ! Colle-le dans ton ' +
-        (platform === 'instagram' ? 'story ou DM Instagram' :
+      alert('📋 Message copié ! Colle-le dans ta ' +
+        (platform === 'instagram' ? 'story ou tes DM Instagram' :
          platform === 'snapchat' ? 'snap ou chat Snapchat' :
          'TikTok') + ' 🎠')
       return

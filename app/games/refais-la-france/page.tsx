@@ -1,8 +1,9 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
+import { getSupabaseClient, demoMode } from '@/lib/supabase'
 
 // Types
 type GameStep = 'intro' | 'budget' | 'result' | 'comparison'
@@ -230,6 +231,113 @@ export default function RefaisLaFrancePage() {
   const [showAllCategories, setShowAllCategories] = useState(false)
   const [profileResult, setProfileResult] = useState<Profile | null>(null)
   const [matchProfile, setMatchProfile] = useState<{ name: string; profile: Profile; budget: Record<string, number> } | null>(null)
+  const [userProposals, setUserProposals] = useState<string[]>([])
+  const [friendsResults, setFriendsResults] = useState<Array<{
+    id: string
+    pseudo: string
+    budget: Record<string, number>
+    profile_type: string
+    created_at: string
+  }>>([])
+  const [loadingFriends, setLoadingFriends] = useState(false)
+
+  // Charger les propositions sauvegardées
+  useEffect(() => {
+    const saved = localStorage.getItem('refais_la_france_proposals')
+    if (saved) {
+      setUserProposals(JSON.parse(saved))
+    }
+  }, [])
+
+  // Charger les résultats des amis depuis Supabase
+  useEffect(() => {
+    const loadFriendsResults = async () => {
+      if (demoMode) return // Pas de chargement en mode démo
+
+      const supabase = getSupabaseClient()
+      if (!supabase) return
+
+      setLoadingFriends(true)
+      try {
+        const { data: { user } } = await supabase.auth.getUser()
+        if (!user) return
+
+        // Récupérer les résultats des amis (utilisateurs qui ont joué au jeu)
+        const { data, error } = await supabase
+          .from('game_results')
+          .select('id, user_id, pseudo, budget, profile_type, created_at')
+          .eq('game_id', 'refais-la-france')
+          .neq('user_id', user.id)
+          .order('created_at', { ascending: false })
+          .limit(20)
+
+        if (data && !error) {
+          setFriendsResults(data.map((d: { id: string; pseudo: string; budget: Record<string, number>; profile_type: string; created_at: string }) => ({
+            id: d.id,
+            pseudo: d.pseudo,
+            budget: d.budget as Record<string, number>,
+            profile_type: d.profile_type,
+            created_at: d.created_at
+          })))
+        }
+      } catch (e) {
+        console.error('Error loading friends results:', e)
+      } finally {
+        setLoadingFriends(false)
+      }
+    }
+
+    loadFriendsResults()
+  }, [])
+
+  // Sauvegarder le résultat dans Supabase
+  const saveResultToSupabase = async (profileType: ProfileType, budgetData: Record<string, number>) => {
+    if (demoMode) {
+      // Mode démo : juste sauvegarder en localStorage
+      localStorage.setItem('refais_la_france_budget', JSON.stringify(budgetData))
+      localStorage.setItem('refais_la_france_profile', profileType)
+      return
+    }
+
+    const supabase = getSupabaseClient()
+    if (!supabase) return
+
+    try {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) return
+
+      // Récupérer le pseudo
+      const pseudo = localStorage.getItem('userPseudo') || 'Joueur'
+
+      // Sauvegarder ou mettre à jour le résultat
+      const { error } = await supabase
+        .from('game_results')
+        .upsert({
+          user_id: user.id,
+          game_id: 'refais-la-france',
+          pseudo,
+          budget: budgetData,
+          profile_type: profileType,
+          proposals: userProposals,
+          updated_at: new Date().toISOString()
+        }, {
+          onConflict: 'user_id,game_id'
+        })
+
+      if (error) {
+        console.error('Error saving result:', error)
+      }
+    } catch (e) {
+      console.error('Error saving to Supabase:', e)
+    }
+  }
+
+  // Fonction pour ajouter une proposition
+  const addProposal = (proposal: string) => {
+    const updated = [...userProposals, proposal]
+    setUserProposals(updated)
+    localStorage.setItem('refais_la_france_proposals', JSON.stringify(updated))
+  }
 
   // Générer un profil de match aléatoire pour la démo
   const generateMatchProfile = () => {
@@ -289,9 +397,8 @@ export default function RefaisLaFrancePage() {
     setProfileResult(profile)
     setStep('result')
 
-    // Sauvegarder le résultat
-    localStorage.setItem('refais_la_france_budget', JSON.stringify(budget))
-    localStorage.setItem('refais_la_france_profile', profileType)
+    // Sauvegarder le résultat (localStorage + Supabase si connecté)
+    saveResultToSupabase(profileType, budget)
   }
 
   // Catégories à afficher
@@ -563,6 +670,31 @@ export default function RefaisLaFrancePage() {
               {showAllCategories ? '− Réduire' : `+ Voir les ${categories.length - 6} autres catégories`}
             </button>
 
+            {/* Proposer une dépense */}
+            <div className="mt-6 p-4 rounded-xl text-center" style={{ background: 'rgba(255, 165, 0, 0.1)', border: '2px dashed rgba(255, 165, 0, 0.3)' }}>
+              <p className="text-[#FFA500] text-sm mb-3">
+                Il manque une dépense absurde ? Propose-la !
+              </p>
+              <button
+                onClick={() => {
+                  const idea = prompt('Propose ta dépense WTF pour la France :')
+                  if (idea && idea.trim()) {
+                    addProposal(idea.trim())
+                    alert(`"${idea}" ajoutée ! 🏛️\nTa proposition sera prise en compte dans ton analyse.`)
+                  }
+                }}
+                className="px-4 py-2 rounded-lg font-bold text-sm transition hover:scale-105"
+                style={{ background: 'linear-gradient(135deg, #FFA500, #FFD700)', color: '#1A0033' }}
+              >
+                💡 Proposer une dépense
+              </button>
+              {userProposals.length > 0 && (
+                <div className="mt-3 text-xs text-[#FFA500]/70">
+                  {userProposals.length} proposition{userProposals.length > 1 ? 's' : ''} enregistrée{userProposals.length > 1 ? 's' : ''}
+                </div>
+              )}
+            </div>
+
             {/* Disclaimer footer */}
             <div className="mt-6 p-3 text-center border-t border-white/10">
               <p className="text-white/30 text-xs">
@@ -673,6 +805,26 @@ export default function RefaisLaFrancePage() {
               </div>
             </div>
 
+            {/* Propositions de l'utilisateur */}
+            {userProposals.length > 0 && (
+              <div className="card-90s p-5 mb-6" style={{ borderColor: '#FFA500' }}>
+                <h3 className="text-[#FFA500] font-bold mb-4" style={{ textShadow: '0 0 10px #FFA500' }}>
+                  💡 TES PROPOSITIONS WTF
+                </h3>
+                <ul className="space-y-2">
+                  {userProposals.map((proposal, index) => (
+                    <li key={index} className="flex items-start gap-2 text-white/80 text-sm">
+                      <span className="text-[#FFA500]">•</span>
+                      <span>{proposal}</span>
+                    </li>
+                  ))}
+                </ul>
+                <p className="text-xs text-white/40 mt-4 italic">
+                  Ces idées seront transmises à la Commission Parlementaire du WTF. 🏛️
+                </p>
+              </div>
+            )}
+
             {/* Actions */}
             <div className="space-y-3">
               <button
@@ -691,17 +843,59 @@ export default function RefaisLaFrancePage() {
               >
                 🔗 Partager mon profil
               </button>
-              <button
-                onClick={() => {
-                  const match = generateMatchProfile()
-                  setMatchProfile(match)
-                  setStep('comparison')
-                }}
-                className="btn-cta-primary w-full justify-center"
-                style={{ background: 'linear-gradient(135deg, #FF00FF 0%, #FF6B9D 100%)' }}
-              >
-                ⚔️ Comparer avec un pote
-              </button>
+              {/* Comparaison avec amis réels ou simulation */}
+              {friendsResults.length > 0 ? (
+                <div className="space-y-2">
+                  <p className="text-[#FF00FF] text-sm font-bold text-center mb-2">
+                    ⚔️ Compare avec tes potes :
+                  </p>
+                  {friendsResults.slice(0, 3).map((friend) => {
+                    const friendProfile = profiles.find(p => p.id === friend.profile_type)
+                    return (
+                      <button
+                        key={friend.id}
+                        onClick={() => {
+                          setMatchProfile({
+                            name: friend.pseudo,
+                            profile: friendProfile || profiles[0],
+                            budget: friend.budget
+                          })
+                          setStep('comparison')
+                        }}
+                        className="w-full py-3 px-4 rounded-xl font-bold flex items-center justify-between transition hover:scale-[1.02]"
+                        style={{ background: 'rgba(255, 0, 255, 0.2)', border: '2px solid #FF00FF' }}
+                      >
+                        <span className="flex items-center gap-2">
+                          <span>{friendProfile?.icon || '👤'}</span>
+                          <span className="text-white">{friend.pseudo}</span>
+                        </span>
+                        <span className="text-[#FF00FF] text-sm">{friendProfile?.name.replace(/^(Le |La |L')/, '')}</span>
+                      </button>
+                    )
+                  })}
+                  {friendsResults.length > 3 && (
+                    <p className="text-white/40 text-xs text-center">
+                      +{friendsResults.length - 3} autres ont joué
+                    </p>
+                  )}
+                </div>
+              ) : (
+                <button
+                  onClick={() => {
+                    const match = generateMatchProfile()
+                    setMatchProfile(match)
+                    setStep('comparison')
+                  }}
+                  className="btn-cta-primary w-full justify-center"
+                  style={{ background: 'linear-gradient(135deg, #FF00FF 0%, #FF6B9D 100%)' }}
+                >
+                  {loadingFriends ? (
+                    <span className="animate-spin">⏳</span>
+                  ) : (
+                    <>⚔️ Comparer avec un pote (simulation)</>
+                  )}
+                </button>
+              )}
               <button
                 onClick={() => {
                   setBudget(() => {

@@ -184,6 +184,8 @@ export default function GameCard({
               src={image}
               alt={title}
               fill
+              sizes="(max-width: 640px) 100vw, (max-width: 768px) 50vw, 340px"
+              quality={90}
               className="object-cover transition-transform duration-300"
               style={{ transform: isHovered && !isLocked ? 'scale(1.05)' : 'scale(1)' }}
               onError={() => setImageError(true)}

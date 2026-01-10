@@ -1110,10 +1110,6 @@ export default function DashboardPage() {
               <span>🏠</span>
               <span>Accueil</span>
             </Link>
-            <Link href="/tirage" className="nav-item">
-              <span>🎲</span>
-              <span>Tirage</span>
-            </Link>
             <Link href="/games" className="nav-item highlight">
               <span>🎮</span>
               <span>Jeux</span>

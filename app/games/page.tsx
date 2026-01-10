@@ -194,10 +194,6 @@ export default function GamesPage() {
                 <span className="nav-emoji">🏠</span>
                 Accueil
               </Link>
-              <Link href="/games/jeu-oie" className="top-nav-item">
-                <span className="nav-emoji">🎲</span>
-                Tirage
-              </Link>
               <Link href="/games" className="top-nav-item active">
                 <span className="nav-emoji">🎮</span>
                 JEUX

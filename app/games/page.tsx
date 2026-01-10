@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import GameCard from '../components/GameCard'
 import { useUser } from '../contexts/UserContext'
+import NotificationBell from '../components/NotificationBell'
 
 // Configuration des images Midjourney (chemins exacts des fichiers)
 const gameImages: Record<string, string> = {
@@ -182,9 +183,7 @@ export default function GamesPage() {
                   💎 PREMIUM
                 </Link>
               )}
-              <button className="relative p-2 text-white/60 hover:text-[#FFFF00] transition">
-                <span className="text-2xl">🔔</span>
-              </button>
+              <NotificationBell />
             </div>
           </div>
 

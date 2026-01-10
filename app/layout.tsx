@@ -17,7 +17,7 @@ export const metadata: Metadata = {
   openGraph: {
     type: "website",
     locale: "fr_FR",
-    url: "https://delidelo.app",
+    url: "https://delidelo.netlify.app",
     siteName: "Déli Délo",
     title: "Déli Délo - Joue. Révèle-toi. Connecte.",
     description: "L'app dating où on joue AVANT de se parler",

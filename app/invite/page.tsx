@@ -8,14 +8,14 @@ export default function InvitePage() {
 
   // Copier le lien
   const copyLink = () => {
-    navigator.clipboard.writeText('https://delidelo.app/join/ABC123')
+    navigator.clipboard.writeText('https://delidelo.netlify.app/join/ABC123')
     setCopiedLink(true)
     setTimeout(() => setCopiedLink(false), 2000)
   }
 
   // Partager
   const shareOn = async (platform: string) => {
-    const message = "Viens jouer avec moi sur Déli Délo ! 🎠 L'app où les grands redeviennent petits ✨ https://delidelo.app/join/ABC123"
+    const message = "Viens jouer avec moi sur Déli Délo ! 🎠 L'app où les grands redeviennent petits ✨ https://delidelo.netlify.app/join/ABC123"
     const text = encodeURIComponent(message)
 
     // Pour Instagram, Snapchat, TikTok : copier le texte et ouvrir l'app
@@ -172,7 +172,7 @@ export default function InvitePage() {
             <div className="flex gap-3 items-center">
               <input
                 type="text"
-                value="delidelo.app/join/ABC123"
+                value="delidelo.netlify.app/join/ABC123"
                 readOnly
                 className="input-90s flex-1 text-base py-3"
                 style={{ background: '#1A0033' }}

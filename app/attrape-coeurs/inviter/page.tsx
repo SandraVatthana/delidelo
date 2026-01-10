@@ -11,7 +11,7 @@ export default function InviterAmi() {
   const [sent, setSent] = useState(false)
 
   // Lien d'invitation unique (mock)
-  const inviteLink = 'https://delidelo.app/join/abc123'
+  const inviteLink = 'https://delidelo.netlify.app/join/abc123'
 
   const handleCopy = async () => {
     await navigator.clipboard.writeText(inviteLink)

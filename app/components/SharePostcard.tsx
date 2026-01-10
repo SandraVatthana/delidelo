@@ -79,7 +79,7 @@ export default function SharePostcard({
   const shareText = customMessage ||
     `🎠 Coucou de Déli Délo land ! J'ai obtenu ${score} points au ${gameName} ${gameEmoji} - Viens jouer avec moi !`
 
-  const shareUrl = `https://delidelo.app/invite?from=${encodeURIComponent(playerName)}`
+  const shareUrl = `https://delidelo.netlify.app/invite?from=${encodeURIComponent(playerName)}`
 
   const shareToWhatsApp = () => {
     const url = `https://wa.me/?text=${encodeURIComponent(shareText + '\n\n' + shareUrl)}`
